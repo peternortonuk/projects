@@ -1,0 +1,18 @@
+from enaml.widgets.api import Window, Label, Field, Form
+from enaml.stdlib.fields import IntField
+
+
+enamldef MetaDataView(Window):
+    attr curve
+    Form:
+        Label:
+            text = 'Curve ID'
+        IntField:
+            value := curve.curve_id
+        Label:
+            text = 'List of attributes'
+        Field:
+            text << str(curve.attributes)
+            text >> [i for i in curve.attributes]
+
+
