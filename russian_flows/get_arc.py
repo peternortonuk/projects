@@ -40,8 +40,8 @@ def _get_actual_flow_from_arc_forward_curve_history(df, offset):
         for d in obs_dates:
             try:
                 # for every observation date, get a date in the past
-                # because by then it should be a known actual value
-                yield (d, df.loc[:d, d].iloc[-offset])
+                # because by then it should be a known, actual value
+                yield (df.loc[:d, d].iloc[[-offset]])
             except IndexError:
                 pass
     df = pd.DataFrame(iter_price(), columns=['obs_date', 'values'])
@@ -81,10 +81,10 @@ def load_curves_from_local():
 
 if __name__ == '__main__':
     effectivedate = dt.date.today()
-    refresh = False
+    refresh = True
 
     shelf = load_curves_from_local()
-    if refresh or not shelf:
+    if refresh or len(shelf) == 0:
         flows_dict = load_curves_from_arc(flows_dict)
         save_curves_to_local(flows_dict)
     else:
