@@ -25,7 +25,7 @@ def get_price_history_from_arc(name, env='PROD'):
 
 
 def get_forward_curve_history_from_arc(name, env='PROD'):
-    start_date = dt.date(2018, 11, 1)
+    start_date = dt.date(2010, 1, 1)
     try:
         curve = get_forward_curve_history(name, start_date, env=env)
         return curve
@@ -41,8 +41,7 @@ def _iter_flow_indexer(df, offset=7):
         try:
             # for every observation date, get a date in the past
             # because by then it should be a known, actual value
-            ts = df.loc[d, :]
-            yield ts.index[0], ts.values[0]
+            yield d, ts.loc[d]
         except IndexError:
             pass
 
@@ -60,7 +59,6 @@ def _iter_price_indexer(df, offset=1):
             yield d, row.values[0]
         except IndexError:
             pass
-
 
 
 def _get_indexed_value_from_arc_forward_curve_history(df, _iter_indexer):
@@ -116,4 +114,3 @@ if __name__ == '__main__':
     else:
         flows_dict = shelf
 
-    import pdb; pdb.set_trace()
