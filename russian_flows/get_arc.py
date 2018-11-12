@@ -25,7 +25,7 @@ def get_price_history_from_arc(name, env='PROD'):
 
 
 def get_forward_curve_history_from_arc(name, env='PROD'):
-    start_date = dt.date(2018, 1, 1)
+    start_date = dt.date(2018, 11, 1)
     try:
         curve = get_forward_curve_history(name, start_date, env=env)
         curve = _get_actual_flow_from_arc_forward_curve_history(curve, offset=7)
@@ -70,8 +70,8 @@ def load_curves_from_arc(flows_dict):
 
 def save_curves_to_local(flows_dict):
     d = shelve.open(pathfile)
-    for k, v in flows_dict:
-        d[k] = k[v]
+    for k, v in flows_dict.items():
+        d[k] = v
     d.close()
 
 
