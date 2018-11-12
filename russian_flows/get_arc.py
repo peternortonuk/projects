@@ -34,24 +34,33 @@ def get_forward_curve_history_from_arc(name, env='PROD'):
 
 
 def _iter_flow_indexer(df, offset=7):
-    obs_dates = df.columns
-    for d in obs_dates:
+    effective_date = df.columns[-1]
+    ts = df.loc[:effective_date, effective_date]
+    point_dates = ts.index
+    for d in point_dates:
         try:
             # for every observation date, get a date in the past
             # because by then it should be a known, actual value
-            yield (df.loc[:d, d].iloc[[-offset]])
+            ts = df.loc[d, :]
+            yield ts.index[0], ts.values[0]
         except IndexError:
             pass
 
 
 def _iter_price_indexer(df, offset=1):
-    obs_dates = df.columns
-    for d in obs_dates:
+    effective_dates = df.columns
+    offset = dt.timedelta(days=offset)
+    for d in effective_dates:
         try:
-            # for every observation date, get a date in the future
-            yield (df.loc[d:, d].iloc[[offset]])
+            # for every observation date, get all the curve
+            ts = df.loc[d:, d]
+            # select the first row
+            row = ts.first(offset)
+            # return date and value
+            yield d, row.values[0]
         except IndexError:
             pass
+
 
 
 def _get_indexed_value_from_arc_forward_curve_history(df, _iter_indexer):
@@ -64,7 +73,7 @@ def _get_indexed_value_from_arc_forward_curve_history(df, _iter_indexer):
 
 flows_dict = {
     'NordStream': input_data('Russia Flow Forecast - Supply - Nord Stream', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'Velke Kapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'VelkeKapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
     'Mallnow': input_data('Russia Flow Forecast - Supply - Mallnow', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
     'MallnowReverse': input_data('Russia Flow Forecast - Supply - Mallnow Reverse', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
     'Tarvisio': input_data('Russia Flow Forecast - Supply - Tarvisio', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
