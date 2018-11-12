@@ -13,7 +13,7 @@ path_name = r'c:\temp'
 pathfile = os.path.join(path_name, file_name)
 
 input_data = namedtuple('input_data',
-                        'arc_curve_name, function, raw_data_df, clean_data_df')
+                        'arc_curve_name, arc_function, raw_data_df, indexer, clean_data_df')
 
 
 def get_price_history_from_arc(name, env='PROD'):
@@ -28,43 +28,60 @@ def get_forward_curve_history_from_arc(name, env='PROD'):
     start_date = dt.date(2018, 11, 1)
     try:
         curve = get_forward_curve_history(name, start_date, env=env)
-        curve = _get_actual_flow_from_arc_forward_curve_history(curve, offset=7)
         return curve
     except HTTPError:
         logger.warning('HTTPError occurred for curve %s' % name)
 
 
-def _get_actual_flow_from_arc_forward_curve_history(df, offset):
+def _iter_flow_indexer(df, offset=7):
     obs_dates = df.columns
-    def iter_price():
-        for d in obs_dates:
-            try:
-                # for every observation date, get a date in the past
-                # because by then it should be a known, actual value
-                yield (df.loc[:d, d].iloc[[-offset]])
-            except IndexError:
-                pass
-    df = pd.DataFrame(iter_price(), columns=['obs_date', 'values'])
+    for d in obs_dates:
+        try:
+            # for every observation date, get a date in the past
+            # because by then it should be a known, actual value
+            yield (df.loc[:d, d].iloc[[-offset]])
+        except IndexError:
+            pass
+
+
+def _iter_price_indexer(df, offset=1):
+    obs_dates = df.columns
+    for d in obs_dates:
+        try:
+            # for every observation date, get a date in the future
+            yield (df.loc[d:, d].iloc[[offset]])
+        except IndexError:
+            pass
+
+
+def _get_indexed_value_from_arc_forward_curve_history(df, _iter_indexer):
+    if not _iter_indexer:
+        return df
+    df = pd.DataFrame(_iter_indexer(df), columns=['obs_date', 'values'])
     df.set_index('obs_date', inplace=True)
     return df
 
 
 flows_dict = {
-    'NordStream': input_data('Russia Flow Forecast - Supply - Nord Stream', get_forward_curve_history_from_arc, None, None),
-    'Velke Kapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, None),
-    'Mallnow': input_data('Russia Flow Forecast - Supply - Mallnow', get_forward_curve_history_from_arc, None, None),
-    'MallnowReverse': input_data('Russia Flow Forecast - Supply - Mallnow Reverse', get_forward_curve_history_from_arc, None, None),
-    'Tarvisio': input_data('Russia Flow Forecast - Supply - Tarvisio', get_forward_curve_history_from_arc, None, None),
-    'TTF_MA1': input_data('G_ARGUS_TTF_M_MID.EUR', get_forward_curve_history_from_arc, None, None),
-    'PSV_DA': input_data('G_ARGUS_PSV_DA_MID.EUR', get_price_history_from_arc, None, None),
+    'NordStream': input_data('Russia Flow Forecast - Supply - Nord Stream', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'Velke Kapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'Mallnow': input_data('Russia Flow Forecast - Supply - Mallnow', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'MallnowReverse': input_data('Russia Flow Forecast - Supply - Mallnow Reverse', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'Tarvisio': input_data('Russia Flow Forecast - Supply - Tarvisio', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'TTF_MA1': input_data('G_ARGUS_TTF_M_MID.EUR', get_forward_curve_history_from_arc, None, _iter_price_indexer, None),
+    'PSV_DA': input_data('G_ARGUS_PSV_DA_MID.EUR', get_price_history_from_arc, None, None, None),
 }
 
 
 def load_curves_from_arc(flows_dict):
     for k, v in flows_dict.items():
-        df = v.function(v.arc_curve_name)
-        df.dropna(inplace=True)
-        flows_dict[k] = input_data(v.function, v.arc_curve_name, df, None)
+        # get the raw data
+        raw_data_df = v.arc_function(v.arc_curve_name)
+        raw_data_df.dropna(inplace=True)
+        # clean it
+        clean_data_df = _get_indexed_value_from_arc_forward_curve_history(raw_data_df, v.indexer)
+        # update the dict
+        flows_dict[k] = input_data(v.arc_curve_name, v.arc_function, raw_data_df, v.indexer, clean_data_df)
     return flows_dict
 
 
