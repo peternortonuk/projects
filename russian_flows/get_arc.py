@@ -32,8 +32,7 @@ def _iter_flow_indexer(df):
     point_dates = ts.index
     for d in point_dates:
         try:
-            # for every observation date, get a date in the past
-            # because by then it should be a known, actual value
+            # the last column has all the actuals
             yield d, ts.loc[d]
         except IndexError:
             pass
