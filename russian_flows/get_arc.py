@@ -8,9 +8,6 @@ import datetime as dt
 import shelve
 import os
 
-input_data = namedtuple('input_data',
-                        'arc_curve_name, arc_function, raw_data_df, indexer, clean_data_df')
-
 
 def get_price_history_from_arc(name, env='PROD'):
     try:
@@ -29,7 +26,7 @@ def get_forward_curve_history_from_arc(name, env='PROD'):
         logger.warning('HTTPError occurred for curve %s' % name)
 
 
-def _iter_flow_indexer(df, offset=7):
+def _iter_flow_indexer(df):
     effective_date = df.columns[-1]
     ts = df.loc[:effective_date, effective_date]
     point_dates = ts.index
@@ -65,17 +62,6 @@ def _get_indexed_value_from_arc_forward_curve_history(df, _iter_indexer):
     return df
 
 
-flows_dict = {
-    'NordStream': input_data('Russia Flow Forecast - Supply - Nord Stream', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'VelkeKapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'Mallnow': input_data('Russia Flow Forecast - Supply - Mallnow', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'MallnowReverse': input_data('Russia Flow Forecast - Supply - Mallnow Reverse', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'Tarvisio': input_data('Russia Flow Forecast - Supply - Tarvisio', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
-    'TTF_MA1': input_data('G_ARGUS_TTF_M_MID.EUR', get_forward_curve_history_from_arc, None, _iter_price_indexer, None),
-    'PSV_DA': input_data('G_ARGUS_PSV_DA_MID.EUR', get_price_history_from_arc, None, None, None),
-}
-
-
 def load_curves_from_arc(flows_dict):
     for k, v in flows_dict.items():
         # get the raw data
@@ -99,19 +85,31 @@ def load_curves_from_local(pathfile):
     return shelve.open(pathfile)
 
 
-if __name__ == '__main__':
+# define the data structure
+input_data = namedtuple('input_data',
+                        'arc_curve_name, arc_function, raw_data_df, indexer, clean_data_df')
 
-    # config
-    file_name = 'flows_dict.db'
-    path_name = 'data'
-    refresh = False
+# configure this for required curves
+flows_dict = {
+    'NordStream': input_data('Russia Flow Forecast - Supply - Nord Stream', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'VelkeKapusany': input_data('Russia Flow Forecast - Supply - Velke Kapusany', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'Mallnow': input_data('Russia Flow Forecast - Supply - Mallnow', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'MallnowReverse': input_data('Russia Flow Forecast - Supply - Mallnow Reverse', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'Tarvisio': input_data('Russia Flow Forecast - Supply - Tarvisio', get_forward_curve_history_from_arc, None, _iter_flow_indexer, None),
+    'TTF_MA1': input_data('G_ARGUS_TTF_M_MID.EUR', get_forward_curve_history_from_arc, None, _iter_price_indexer, None),
+    'PSV_DA': input_data('G_ARGUS_PSV_DA_MID.EUR', get_price_history_from_arc, None, None, None),
+}
 
-    pathfile = os.path.join(path_name, file_name)
-    shelf = load_curves_from_local(pathfile)
+# config
+file_name = 'flows_dict.db'
+path_name = 'data'
+refresh = False
 
-    if refresh or len(shelf) == 0:
-        flows_dict = load_curves_from_arc(flows_dict)
-        save_curves_to_local(pathfile, flows_dict)
-    else:
-        flows_dict = shelf
+pathfile = os.path.join(path_name, file_name)
+shelf = load_curves_from_local(pathfile)
 
+if refresh or len(shelf) == 0:
+    flows_dict = load_curves_from_arc(flows_dict)
+    save_curves_to_local(pathfile, flows_dict)
+else:
+    flows_dict = shelf
