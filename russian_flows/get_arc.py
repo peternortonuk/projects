@@ -8,10 +8,6 @@ import datetime as dt
 import shelve
 import os
 
-file_name = 'flows_dict.db'
-path_name = r'c:\temp'
-pathfile = os.path.join(path_name, file_name)
-
 input_data = namedtuple('input_data',
                         'arc_curve_name, arc_function, raw_data_df, indexer, clean_data_df')
 
@@ -92,25 +88,30 @@ def load_curves_from_arc(flows_dict):
     return flows_dict
 
 
-def save_curves_to_local(flows_dict):
+def save_curves_to_local(pathfile, flows_dict):
     d = shelve.open(pathfile)
     for k, v in flows_dict.items():
         d[k] = v
     d.close()
 
 
-def load_curves_from_local():
+def load_curves_from_local(pathfile):
     return shelve.open(pathfile)
 
 
 if __name__ == '__main__':
-    effectivedate = dt.date.today()
-    refresh = True
 
-    shelf = load_curves_from_local()
+    # config
+    file_name = 'flows_dict.db'
+    path_name = 'data'
+    refresh = False
+
+    pathfile = os.path.join(path_name, file_name)
+    shelf = load_curves_from_local(pathfile)
+
     if refresh or len(shelf) == 0:
         flows_dict = load_curves_from_arc(flows_dict)
-        save_curves_to_local(flows_dict)
+        save_curves_to_local(pathfile, flows_dict)
     else:
         flows_dict = shelf
 
