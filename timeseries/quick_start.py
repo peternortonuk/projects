@@ -16,7 +16,6 @@ def main():
 
     # plot healthy example
     timeseries[timeseries['id'] == 3].plot(subplots=True, sharex=True, figsize=(10,10))
-    plt.show()
 
     # plot failure example
     timeseries[timeseries['id'] == 21].plot(subplots=True, sharex=True, figsize=(10,10))
@@ -32,6 +31,8 @@ def main():
     # filter for significant features
     features_filtered = select_features(extracted_features, y)
     print('shape of selected features: {},{}'.format(*features_filtered.shape))
+    import pdb; pdb.set_trace()
+
 
 
 if __name__ == '__main__':
