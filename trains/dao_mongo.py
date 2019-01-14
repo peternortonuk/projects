@@ -1,0 +1,9 @@
+from mongoengine import *
+connect(db='trains', host='localhost', port=27017)
+
+class Train(Document):
+    service_id = StringField(required=True)
+    service = DictField()
+    details = DictField()
+
+pass
