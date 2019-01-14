@@ -1,5 +1,6 @@
 from nredarwin.webservice import DarwinLdbSession
 from credentials import open_ldbws_account_details
+from pprint import pprint as pp
 
 wsdl = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/wsdl.aspx"
 api_key = open_ldbws_account_details['token']
@@ -23,14 +24,22 @@ def print_properties(item, properties):
 session = DarwinLdbSession(wsdl=wsdl, api_key=api_key)
 board = session.get_station_board(crs=crs_godalming, destination_crs=crs_london_waterloo)
 services = board.train_services
-for service in services:
-    # print all the standard details
-    print_properties(service, service_properties)
 
-    # for each service print the extra disruption details
+insert_dict = {}
+for service in services:
+    # get the extra disruption details
     service_id = service.service_id
     service_item = session.get_service_details(service_id)
-    print_properties(service_item, service_detail_properties)
 
+    # prepare data to insert into db
+    service_dict = vars(service)
+    service_dict_key = service_dict.pop('_service_id')
+    service_detail_dict = vars(service_item)
+    insert_dict[service_dict_key] = {'service': service_dict, 'details': service_detail_dict}
+
+    # print details
+    print('=============')
+    pp(service_dict)
+    pp(service_detail_dict)
 pass
 
