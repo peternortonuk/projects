@@ -1,7 +1,9 @@
 from nredarwin.webservice import DarwinLdbSession
 from pprint import pprint as pp
 from credentials import open_ldbws_account_details
-from dao_mongo import Train
+
+from projects.trains.dao_mongo import save_observation
+from projects.trains.models import Train
 
 wsdl = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/wsdl.aspx"
 api_key = open_ldbws_account_details['token']
@@ -39,10 +41,13 @@ for service in services:
         service_detail_dict.pop(k)
 
     # insert into db
-    train = Train(service_id=service_id)
-    train.service = service_dict
-    train.details = service_detail_dict
-    train.save()
+    train = Train(
+        service_id=service_id,
+        service=service_dict,
+        details=service_detail_dict
+    )
+    print(train)
+    save_observation(train)
 
 pass
 
