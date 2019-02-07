@@ -1,5 +1,4 @@
 from mongoengine import *
-
 from projects.trains.models import Train
 
 connect(db='trains', host='localhost', port=27017)
@@ -41,4 +40,3 @@ def save_observation(train_model: Train):
 def get_observation_by_id(train_id: str) -> Train:
     pass
 
-pass

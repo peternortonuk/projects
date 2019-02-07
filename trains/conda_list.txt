@@ -25,7 +25,7 @@ wincertstore=0.2=py35hfebbdb8_0
 
 
 '''
-conda create --name trains python=3.5
+conda create --name trains python=3.7
 conda install pandas
 conda install cython
 pip install nre-darwin-py

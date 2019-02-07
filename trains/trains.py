@@ -40,13 +40,15 @@ for service in services:
     for k in details_remove_items:
         service_detail_dict.pop(k)
 
-    # insert into db
+    # create instance of Train data class
     train = Train(
         service_id=service_id,
         service=service_dict,
         details=service_detail_dict
     )
     print(train)
+
+    # call function in mongo DAO
     save_observation(train)
 
 pass
