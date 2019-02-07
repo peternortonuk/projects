@@ -30,5 +30,6 @@ conda install pandas
 conda install cython
 pip install nre-darwin-py
 pip install mongoengine
+conda install -c conda-forge dataclasses
 '''
 
