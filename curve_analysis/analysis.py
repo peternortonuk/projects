@@ -51,8 +51,15 @@ df_location = df_all.loc[All, (All, root_location)]
 df_publication = df_all.loc[All, (latest_publication, All)]
 
 
-def get_legend_string_from_multiindex(df, row):
-    return df.columns.get_level_values(row).strftime('%a %H:%M:%S')
+def get_flat_df_from_2d_multi(df, single_index_number, multi_index_number):
+    single_index = list(set(df.columns.get_level_values(single_index_number)))
+    assert len(single_index) == 1
+    multi_index = df.columns.get_level_values(multi_index_number)
+    df.columns = multi_index
+    return single_index, df
+
+def get_legend_string_from_datetime(index):
+    return index.strftime('%a %H:%M:%S')
 
 def highlight_latest_publication(lines):
     line = lines[-1]
@@ -73,6 +80,11 @@ FigureCanvas(fig2)
 fig1, axes1 = add_subplots(fig=fig1, subplot_cols=4)
 fig2, axes2 = add_subplots(fig=fig2, subplot_cols=4)
 
+# flatten the dfs
+location, df_location = get_flat_df_from_2d_multi(df_location, 1, 0)
+timestamp, df_publication = get_flat_df_from_2d_multi(df_publication, 0, 1)
+
+
 # ================================================================
 # ================================================================
 # use df having a single location and all publication dates
@@ -81,7 +93,7 @@ fig2, axes2 = add_subplots(fig=fig2, subplot_cols=4)
 lines = {}
 lines[0] = axes1[0].plot(df_location.index, df_location.values)
 highlight_latest_publication(lines[0])
-legend_array = get_legend_string_from_multiindex(df_location, 0)
+legend_array = get_legend_string_from_datetime(df_location.columns)
 axes1[0].legend(legend_array)
 axes1[0].set_title('Curve')
 
@@ -121,7 +133,7 @@ df_focus = df_location.iloc[max(iloc - range_, 0):min(iloc + range_, df_location
 # plot focussed original data
 lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
 highlight_latest_publication(lines[3])
-legend_array = get_legend_string_from_multiindex(df_focus, 0)
+legend_array = get_legend_string_from_datetime(df_focus.columns)
 axes1[3].legend(legend_array)
 axes1[3].set_title('Focussed curve chart')
 xlabels = axes1[3].get_xticklabels()
@@ -135,12 +147,6 @@ fig1.savefig('foo')
 # ================================================================
 # many locations for latest publication
 
-
-
-# remove publication date from multi-index
-timestamp = set(df_publication.columns.get_level_values(0))
-columns = df_publication.columns.get_level_values(1)
-df_publication.columns = columns
 
 # start by normalising NBP & ZEE to effective eur/mwh
 NBP = df_publication.loc[All, 'NBP']
