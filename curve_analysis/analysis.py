@@ -58,19 +58,27 @@ def get_flat_df_from_2d_multi(df, single_index_number, multi_index_number):
     df.columns = multi_index
     return single_index, df
 
-def get_legend_string_from_datetime(index):
-    return index.strftime('%a %H:%M:%S')
+
+def format_weekday_time(lst):
+    return [x.strftime('%a %H:%M:%S') for x in lst]
+
+
+def format_weekday_day_month(lst):
+    return [x.strftime('%a %d-%b') for x in lst]
+
 
 def highlight_latest_publication(lines):
     line = lines[-1]
     line.set_linewidth(2)
     line.set_color('black')
 
+
 def add_subplots(fig, subplot_cols, subplot_rows=1):
     axes = {}
     for col in range(subplot_cols):
         axes[col] = fig.add_subplot(subplot_rows, subplot_cols, col + 1)
     return fig, axes
+
 
 # create figures and axes
 fig1 = Figure(figsize=(16, 12))
@@ -93,7 +101,7 @@ timestamp, df_publication = get_flat_df_from_2d_multi(df_publication, 0, 1)
 lines = {}
 lines[0] = axes1[0].plot(df_location.index, df_location.values)
 highlight_latest_publication(lines[0])
-legend_array = get_legend_string_from_datetime(df_location.columns)
+legend_array = format_weekday_time(df_location.columns)
 axes1[0].legend(legend_array)
 axes1[0].set_title('Curve')
 
@@ -125,7 +133,7 @@ loc = df_std.idxmax()
 # boolean of matches
 mask = loc == df_std.index
 # find index
-iloc = np.where(mask==True)[0][0]
+iloc = np.where(mask)[0][0]
 # define range of index to provide focussed chart
 range_ = 10
 df_focus = df_location.iloc[max(iloc - range_, 0):min(iloc + range_, df_location.shape[0])]
@@ -133,9 +141,12 @@ df_focus = df_location.iloc[max(iloc - range_, 0):min(iloc + range_, df_location
 # plot focussed original data
 lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
 highlight_latest_publication(lines[3])
-legend_array = get_legend_string_from_datetime(df_focus.columns)
+legend_array = format_weekday_time(df_focus.columns)
 axes1[3].legend(legend_array)
 axes1[3].set_title('Focussed curve chart')
+
+# get and set the tick labels
+fig1.canvas.draw()
 xlabels = axes1[3].get_xticklabels()
 axes1[3].set_xticklabels(xlabels, rotation=90.0)
 
@@ -179,7 +190,7 @@ legend_array = [pair[0]+'-'+pair[1] for pair in legend_array[1:]]
 
 
 # plot location shifted diff
-lines[1] = axes2[1].plot(df_diff.index ,df_diff.values)
+lines[1] = axes2[1].plot(df_diff.index, df_diff.values)
 axes2[1].set_title('Differential across locations')
 axes2[1].legend(legend_array)
 
@@ -197,7 +208,7 @@ loc = df_std.idxmax()
 # boolean of matches
 mask = loc == df_std.index
 # find index
-iloc = np.where(mask==True)[0][0]
+iloc = np.where(mask)[0][0]
 # define range of index to provide focussed chart
 range = 10
 df_focus = df_publication.iloc[max(iloc - range, 0):min(iloc + range, df_publication.shape[0])]
@@ -206,6 +217,8 @@ df_focus = df_publication.iloc[max(iloc - range, 0):min(iloc + range, df_publica
 lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
 axes1[3].legend(df_publication.columns)
 axes1[3].set_title('Focussed curve chart')
+
+fig2.canvas.draw()
 xlabels = axes1[3].get_xticklabels()
 axes1[3].set_xticklabels(xlabels, rotation=90.0)
 
