@@ -1,7 +1,7 @@
 # import the DAO and connect to the database
 import pandas as pd
 import numpy as np
-from collections import deque
+from collections import deque, OrderedDict
 from gmt.curvelab.dao import CurveLabDAO, CurvePublishLogDocument
 from gmt.orc.run_config_dao import ConfigTemplateDAO, CurveLabDefDocument
 from gmt.db import endur
@@ -26,30 +26,36 @@ for timestamp, curves_df in data_dict.items():
     # define a multiindex
     timestamps = [timestamp]
     markets = curves_df.columns
-    columns = pd.MultiIndex.from_product([timestamps, markets])
+    columns = pd.MultiIndex.from_product([timestamps, markets], names=['timestamps', 'markets'])
     curves_df = pd.DataFrame(curves_df.values, index=curves_df.index, columns=columns)
     dfs_curve.append(curves_df)
-
-# # build spot fx data
-# spot_fx = [i[1] for i in data_dict.values()]
-# markets = [u'GBPUSD', u'EURGBP']
-# timestamps = data_dict.keys()
-# spot_df = pd.DataFrame(data=spot_fx, index=timestamps, columns=markets)
 
 # concatenate dataframes horizontally
 df_all = pd.concat(dfs_curve, axis=1)
 
-# sort columns
-df_all = df_all.T.sort_index().T
-
-# filter the data
+# filter criteria
+markets_subset = [u'NBP', u'ZEE', u'ZTP', u'TTF', u'GPL', u'NCG', u'PSV']
+markets_subset = [u'NBP', u'ZEE', u'TTF', u'NCG']
+markets = markets_subset
 root_location = 'NBP'
 latest_publication = max(data_dict.keys())
 All = slice(None)
 
-# create two distinct dataframes
-df_location = df_all.loc[All, (All, root_location)]
-df_publication = df_all.loc[All, (latest_publication, All)]
+
+def reorder_for_filtering(df, markets):
+    # sort columns; this breaks geographical location order
+    return df.T.sort_index(level=('timestamps', markets)).T
+
+
+def reorder_by_geographical_location(df, markets, match=True, names=['timestamps', 'markets']):
+    timestamps = list(set(df.columns.get_level_values(level='timestamps')))
+    timestamps.sort()
+    tt = [(timestamp, market) for timestamp in timestamps for market in markets]
+    index = pd.MultiIndex.from_tuples(tt, names=names)
+    if match:
+        return df.T.loc[index].T
+    else:
+        return pd.DataFrame(data=df.values, index=df.index, columns=index)
 
 
 def get_flat_df_from_2d_multi(df, single_index_number, multi_index_number):
@@ -93,10 +99,21 @@ FigureCanvas(fig2)
 fig1, axes1 = add_subplots(fig=fig1, subplot_cols=4)
 fig2, axes2 = add_subplots(fig=fig2, subplot_cols=4)
 
+
+# reorder column index
+df_all = reorder_for_filtering(df_all, 'markets')
+
+# create filtered dataframes; filtering requires columns to be sorted
+df_all = df_all.loc[All, (All, markets)]
+df_location = df_all.loc[All, (All, root_location)]
+df_publication = df_all.loc[All, (latest_publication, All)]
+
 # flatten the dfs
 location, df_location = get_flat_df_from_2d_multi(df_location, 1, 0)
 timestamp, df_publication = get_flat_df_from_2d_multi(df_publication, 0, 1)
 
+# reorder column index
+df_all = reorder_by_geographical_location(df_all, markets)
 
 # ================================================================
 # ================================================================
@@ -115,10 +132,10 @@ axes1[0].set_title('Curve')
 # calc time shift along axis of curve
 diff = df_location - df_location.shift(periods=1, axis='rows')
 mask = (diff == 0).all(axis=1)
-df_diff = diff[~mask]
+df_diff_latest = diff[~mask]
 
 # plot timeshifted diff
-lines[1] = axes1[1].plot(df_diff.index, df_diff.values)
+lines[1] = axes1[1].plot(df_diff_latest.index, df_diff_latest.values)
 highlight_latest_publication(lines[1])
 axes1[1].set_title('Differential along curve time')
 
@@ -167,76 +184,89 @@ fig1.savefig('foo')
 
 # ================================================================
 # ================================================================
-# many locations for latest publication
+# many locations for all publications
 
-
-# start by normalising NBP & ZEE to effective eur/mwh
-NBP = df_publication.loc[All, 'NBP']
-TTF = df_publication.loc[All, 'TTF']
-norm = TTF/NBP
-norm = norm.iloc[0]  # scalar spot fx value ie not the curve
-df_publication.loc[:,['NBP', 'ZEE']] = df_publication.loc[:,['NBP', 'ZEE']] * norm
-
-# filter a subset of columns
-columns = [u'NBP', u'ZEE', u'ZTP', u'TTF', u'GPL', u'NCG', u'PSV']
-df_publication = df_publication[columns]
+# normalise NBP & ZEE to effective eur/mwh
+# need to sort in order to filter
+df_all = reorder_for_filtering(df_all, 'markets')
+# first point date and all publication dates
+ZEE = df_all.loc[All, (All, 'ZEE')].iloc[0]
+TTF = df_all.loc[All, (All, 'TTF')].iloc[0]
+# remove the markets index level
+ZEE.index = ZEE.index.get_level_values(level='timestamps')
+TTF.index = TTF.index.get_level_values(level='timestamps')
+# calculate ratio as a series with timestamp as the index
+norm = TTF/ZEE
+# transpose to a dataframe having one row; and timestamps as columns
+norm = norm.to_frame().T
+# extend vertically to same size as df
+norm = norm.reindex(df_all.index, method='ffill')
+# finally, normalise the p/therm locations
+df_all.loc[All, (All, ['NBP', 'ZEE'])] = df_all.loc[All, (All, ['NBP', 'ZEE'])] * norm
+# filter for the latest publication
+df_publication = df_all.loc[All, (latest_publication, All)]
+# and sort again to return to geographical order
+df_all = reorder_by_geographical_location(df_all, markets)
+df_publication = reorder_by_geographical_location(df_publication, markets)
 
 
 lines = {}
 # plot the raw data
 lines[0] = axes2[0].plot(df_publication.index, df_publication.values)
-axes2[0].legend(df_publication.columns)
+axes2[0].legend(df_publication.columns.get_level_values(level='markets'))
 axes2[0].set_title('Curve')
 
+# calc location shift for all publications
+# pandas can't shift column multiindex so transpose and shift row multiindex
+df_all_shifted = df_all.T.groupby(level='timestamps').shift(periods=1, axis='rows').T
+df_diff_all = df_all - df_all_shifted
+df_diff_all.dropna(axis='columns', how='all', inplace=True)
 
-# calc location shift
-df_diff = df_publication - df_publication.shift(periods=1, axis='columns')
 
 # build new column names that describe the basis
-columns = df_publication.columns
-shifted = deque(columns)
-shifted.rotate(1)
-legend_array = zip(columns, shifted)
-legend_array = [pair[0]+'-'+pair[1] for pair in legend_array[1:]]
+basis_list = [pair[0]+'-'+pair[1] for pair in zip(markets[1:], markets[:-1])]
+df_diff_all = reorder_by_geographical_location(df_diff_all, basis_list, match=False, names=['timestamps', 'basis'])
 
+# need to sort in order to filter
+df_diff_all = reorder_for_filtering(df_diff_all, 'basis')
+# basis for just the latest publication
+df_diff_latest = df_diff_all.loc[All, (latest_publication, All)]
+# and sort again to return to geographical order
+df_diff_latest = reorder_by_geographical_location(df_diff_latest, basis_list)
 
 # plot location shifted diff
-lines[1] = axes2[1].plot(df_diff.index, df_diff.values)
-axes2[1].set_title('Differential across locations')
-axes2[1].legend(legend_array)
+lines[1] = axes2[1].plot(df_diff_latest.index, df_diff_latest.values)
+axes2[1].set_title('Location spreads for latest publication')
+axes2[1].legend(basis_list)
 
 # calc standard deviation across axis
-df_std = df_publication.std(axis=1)
+df_std = df_diff_all.T.groupby(level='timestamps').std().T
 
 # plot standard deviation
 lines[2] = axes2[2].plot(df_std.index, df_std.values)
-axes2[2].set_title('StDev across publish time')
+axes2[2].set_title('StDev across publish time per location spread')
 
-
-
-# location of maximum
-loc = df_std.idxmax()
-# boolean of matches
-mask = loc == df_std.index
-# find index
-iloc = np.where(mask)[0][0]
-# define range of index to provide focussed chart
-range = 10
-df_focus = df_publication.iloc[max(iloc - range, 0):min(iloc + range, df_publication.shape[0])]
-
-# plot focussed original data
-lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
-axes1[3].legend(df_publication.columns)
-axes1[3].set_title('Focussed curve chart')
-
-fig2.canvas.draw()
-xlabels = axes1[3].get_xticklabels()
-axes1[3].set_xticklabels(xlabels, rotation=90.0)
+# # location of maximum
+# loc = df_std.idxmax()
+# # boolean of matches
+# import pdb; pdb.set_trace()
+# mask = loc == df_std.index
+# # find index
+# iloc = np.where(mask)[0][0]
+# # define range of index to provide focussed chart
+# range = 10
+# df_focus = df_publication.iloc[max(iloc - range, 0):min(iloc + range, df_publication.shape[0])]
+#
+# # plot focussed original data
+# lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
+# axes1[3].legend(df_publication.columns)
+# axes1[3].set_title('Focussed curve chart')
+#
+# fig2.canvas.draw()
+# xlabels = axes1[3].get_xticklabels()
+# axes1[3].set_xticklabels(xlabels, rotation=90.0)
 
 fig2.savefig('bar')
 
-
-
-import pdb; pdb.set_trace()
 pass
 
