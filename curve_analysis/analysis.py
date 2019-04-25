@@ -7,13 +7,14 @@ from gmt.orc.run_config_dao import ConfigTemplateDAO, CurveLabDefDocument
 from gmt.db import endur
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.ticker import FuncFormatter
 
 
 # create connection
 CurveLabDAO(env='prod')
 
 # query the data returning the full document each time
-results = CurvePublishLogDocument.objects.order_by('-_id').limit(5)
+results = CurvePublishLogDocument.objects(commodities='gas').order_by('-_id').limit(5)
 
 # create a dictionary of curves indexed by timestamps
 data_dict = {result.updated_datetime: result.curves_df for result in results}
@@ -65,6 +66,10 @@ def format_weekday_time(lst):
 
 def format_weekday_day_month(lst):
     return [x.strftime('%a %d-%b') for x in lst]
+
+
+def format_weekday_day_month_str(x, pos):
+    return '%a %d-%b' % x
 
 
 def highlight_latest_publication(lines):
@@ -150,8 +155,14 @@ fig1.canvas.draw()
 xlabels = axes1[3].get_xticklabels()
 axes1[3].set_xticklabels(xlabels, rotation=90.0)
 
+# formatter = FuncFormatter(format_weekday_day_month_str)
+# axes1[3].xaxis.set_major_formatter(formatter)
+
 fig1.savefig('foo')
 # ================================
+
+
+
 
 
 # ================================================================
