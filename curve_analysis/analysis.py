@@ -14,10 +14,11 @@ from matplotlib.ticker import FuncFormatter
 CurveLabDAO(env='prod')
 
 # query the data returning the full document each time
-results = CurvePublishLogDocument.objects(commodities='gas').order_by('-_id').limit(5)
+results = CurvePublishLogDocument.objects(commodities='gas').order_by('-_id').limit(3)
 
 # create a dictionary of curves indexed by timestamps
 data_dict = {result.updated_datetime: result.curves_df for result in results}
+
 
 # create collection of dataframes with multiindex columns
 dfs_curve = []
@@ -36,10 +37,10 @@ df_all = pd.concat(dfs_curve, axis=1)
 # filter criteria
 markets_subset = [u'NBP', u'ZEE', u'ZTP', u'TTF', u'GPL', u'NCG', u'PSV']
 markets_subset = [u'NBP', u'ZEE', u'TTF', u'NCG']
-markets = markets_subset
 root_location = 'NBP'
-latest_publication = max(data_dict.keys())
 All = slice(None)
+latest_publication = max(data_dict.keys())
+markets = markets_subset
 
 
 def reorder_for_filtering(df, markets):
@@ -246,27 +247,29 @@ df_std = df_diff_all.T.groupby(level='timestamps').std().T
 lines[2] = axes2[2].plot(df_std.index, df_std.values)
 axes2[2].set_title('StDev across publish time per location spread')
 
-# # location of maximum
-# loc = df_std.idxmax()
-# # boolean of matches
-# import pdb; pdb.set_trace()
-# mask = loc == df_std.index
-# # find index
-# iloc = np.where(mask)[0][0]
-# # define range of index to provide focussed chart
-# range = 10
-# df_focus = df_publication.iloc[max(iloc - range, 0):min(iloc + range, df_publication.shape[0])]
-#
-# # plot focussed original data
-# lines[3] = axes1[3].plot(df_focus.index, df_focus.values)
-# axes1[3].legend(df_publication.columns)
-# axes1[3].set_title('Focussed curve chart')
-#
-# fig2.canvas.draw()
-# xlabels = axes1[3].get_xticklabels()
-# axes1[3].set_xticklabels(xlabels, rotation=90.0)
+# location of maximum
+max = df_std.max().max()
+# boolean of matches
+mask = df_std.values == max
+# earliest point of maximum
+idx = df_std[mask].index.min()
+# dataframe to plot
+df_focus = df_all.loc[idx, All]
+# unstack pivot last column of multiindex
+df_focus = df_focus.unstack(-1)
+
+# plot focussed original data
+lines[3] = axes2[3].plot(df_focus.index, df_focus.values)
+axes2[3].legend(df_focus.columns)
+axes2[3].set_title('Curve evolution')
+axes2[3].text(1, 1, idx.strftime("%d-%b-%y"))
+
+fig2.canvas.draw()
+xlabels = axes2[3].get_xticklabels()
+#xlabels = format_weekday_time(xlabels)
+axes2[3].set_xticklabels(xlabels, rotation=90.0)
 
 fig2.savefig('bar')
-
+import pdb; pdb.set_trace()
 pass
 
