@@ -1,7 +1,9 @@
-from pytube import YouTube
+from __future__ import unicode_literals
+import youtube_dl
 from playlist import urls
 
-for url in urls:
-    yt = YouTube(url)
-    x = yt.streams.filter(progressive=True).first().download()
+
+ydl_opts = {}
+with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    ydl.download(urls)
     pass
