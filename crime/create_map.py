@@ -2,25 +2,23 @@
 https://developers.google.com/maps/documentation/maps-static/overview
 
 https://docs.python.org/3/howto/urllib2.html#urllib-howto
+http://www.compciv.org/guides/python/how-tos/creating-proper-url-query-strings/
+
 """
 
 import urllib.parse
-import urllib.request
+import webbrowser
 from constants import raw_url
 from credentials import api_key
 
-params_dict = {'center': 'Brooklyn+Bridge,New+York,NY',
-               'zoom': 13,
-               'size': '600x300',
-               'maptype': 'roadmap',
-               }
+center = r'Oxford,UK'
+width = 600
+height = 600
+size = f'{width}x{height}'
 
-params_dict['key'] = api_key
+params_dict = {'center': center, 'zoom': 13, 'size': size, 'maptype': 'roadmap',
+               'key': api_key}
 
-
-data = urllib.parse.urlencode(params_dict)
-data = data.encode('ascii')  # data should be bytes
-req = urllib.request.Request(raw_url, data)
-with urllib.request.urlopen(req) as response:
-   the_page = response.read()
-   pass
+params = urllib.parse.urlencode(params_dict)
+url = raw_url + params
+webbrowser.open(url)
