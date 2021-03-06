@@ -9,13 +9,20 @@ https://maps.googleapis.com/maps/api/staticmap?center=63.259591,-144.667969&zoom
 
 
 """
-
+import pandas as pd
 from crime.get_data import read_giant_df_from_pickle
 from crime.constants import all_raw_pkl_file_name, FALLS_WITHIN, filter_falls_within, raw_url
 
+all_columns = ['Crime ID', 'Month', 'Reported by', 'Falls within', 'Longitude',
+               'Latitude', 'Location', 'LSOA code', 'LSOA name', 'Crime type',
+               'Last outcome category', 'Context']
+
+selected_columns = ['Month', 'Longitude', 'Latitude', 'Crime type']
+
 
 def get_parameters_from_df(df):
-    return []
+    df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m')
+    return df[selected_columns]
 
 
 def build_full_url(url, parameters):
