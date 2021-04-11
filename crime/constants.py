@@ -5,5 +5,5 @@ FALLS_WITHIN = 'Falls within'
 COLOR = 'Color'
 CRIME_TYPE = 'Crime type'
 filter_falls_within = 'Thames Valley Police'
-raw_url = r'https://maps.googleapis.com/maps/api/staticmap?'
+raw_url = r'https://maps.googleapis.com/maps/api/staticmap'
 accepted_colors = ['black', 'brown', 'green', 'purple', 'yellow', 'blue', 'gray', 'orange', 'red', 'white']
