@@ -14,6 +14,7 @@ from crime.get_data import read_giant_df_from_pickle
 from crime.constants import all_raw_pkl_file_name, FALLS_WITHIN, filter_falls_within, raw_url, COLOR, CRIME_TYPE
 from crime.create_map import map_params, key_params
 import seaborn as sns
+from urllib.parse import quote
 import webbrowser
 
 
@@ -22,7 +23,6 @@ all_columns = ['Crime ID', 'Month', 'Reported by', 'Falls within', 'Longitude',
                'Last outcome category', 'Context']
 
 selected_columns = ['Month', 'Longitude', 'Latitude', 'Crime type']
-selected_columns = selected_columns + [COLOR]
 
 
 def get_date_from_string(df):
@@ -38,7 +38,7 @@ def add_color_for_column(df, col):
 
 
 def build_string_for_row(row):
-    return f'markers=color:{row.Color}|{row.Longitude},{row.Latitude}'
+    return f'markers=color:{row.Color}|{row.Latitude},{row.Longitude}'
 
 
 if __name__ == '__main__':
@@ -52,8 +52,8 @@ if __name__ == '__main__':
     # report period is expressed as string in the form yyyy-mm; convert to date
     get_date_from_string(df)
 
-    # exclude rows that have any nan values
-    mask = df.isnull().any(axis='columns')
+    # exclude rows that have any nan values in important columns
+    mask = df[selected_columns].isnull().any(axis='columns')
     df = df[~mask]
 
     # filter to manage size of url
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     # build a string for each data point
     df['string'] = df.apply(build_string_for_row, axis=1)
     all_strings = '&'.join(df['string'].values)
+    all_strings = quote(all_strings)
 
     url = raw_url + '?' + map_params + '&' + all_strings + '&' + key_params
     webbrowser.open(url)
