@@ -2,3 +2,4 @@
 *.csv
 *.pkl
 credentials.py
+crime/__pycache__/
