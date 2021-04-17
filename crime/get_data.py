@@ -29,11 +29,12 @@ def read_all_csv_to_df(data_folder_name):
     return pd.concat(dfs, axis='rows')
 
 
-def save_giant_df_to_pickle(df, filename):
-    df.to_pickle(os.path.join(data_folder_name, all_raw_pkl_file_name))
+def save_df_to_pickle(df, filename):
+    df.to_pickle(os.path.join(data_folder_name, filename))
 
-def read_giant_df_from_pickle(filename):
-    return pd.read_pickle(os.path.join(data_folder_name, all_raw_pkl_file_name))
+
+def read_df_from_pickle(filename):
+    return pd.read_pickle(os.path.join(data_folder_name, filename))
 
 
 if __name__ == '__main__':
@@ -46,18 +47,4 @@ if __name__ == '__main__':
         df = read_giant_df_from_pickle(all_raw_pkl_file_name)
         mask = df[FALLS_WITHIN] == filter_falls_within
         df = df[mask]
-
-
-
-
-    pass
-
-
-
-
-
-
-
-
-
 

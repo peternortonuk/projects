@@ -1,6 +1,7 @@
 data_folder_name = r'c:\dev\code\projects\crime\data'
 zip_file_name = '6b8bfec85329ce2986785a5fc37b3704104aaff4.zip'
 all_raw_pkl_file_name = 'all_raw.pkl'
+subset_raw_pkl_file_name = 'subset_raw.pkl'
 FALLS_WITHIN = 'Falls within'
 COLOR = 'Color'
 CRIME_TYPE = 'Crime type'

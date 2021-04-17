@@ -6,16 +6,17 @@ http://www.compciv.org/guides/python/how-tos/creating-proper-url-query-strings/
 
 """
 
-import urllib.parse
 from crime.credentials import api_key
 
-center = r'Oxford,UK'
+# Oxford,UK
+latitude = 51.7520
+longitude = -1.2577
+center = f'{latitude},{longitude}'
+
 width = 600
 height = 600
 size = f'{width}x{height}'
 
-map_dict = {'center': center, 'zoom': 13, 'size': size, 'maptype': 'roadmap'}
+map_dict = {'center': center, 'zoom': 12, 'size': size, 'maptype': 'roadmap'}
 key_dict = {'key': api_key}
 
-map_params = urllib.parse.urlencode(map_dict)
-key_params = urllib.parse.urlencode(key_dict)
