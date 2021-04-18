@@ -3,15 +3,18 @@ this module filters the police data and builds the url
 
 """
 import pandas as pd
-from crime.get_data import read_df_from_pickle, save_df_to_pickle
-from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, \
-    MONTH, LONGITUDE, LATITUDE, CRIME_TYPE, FALLS_WITHIN, COLOR
-from crime.create_map import map_dict, key_dict, latitude, longitude
 import seaborn as sns
 from urllib.parse import quote
 import urllib.parse
 import webbrowser
 from enum import Enum, auto
+from datetime import datetime
+
+from crime.get_data import read_df_from_pickle, save_df_to_pickle
+from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, \
+    MONTH, LONGITUDE, LATITUDE, CRIME_TYPE, FALLS_WITHIN, COLOR
+from crime.create_map import map_dict, key_dict, latitude, longitude
+from crime.html_template import template
 
 # ======================================================================================================================
 # setup
@@ -28,11 +31,12 @@ selected_columns = [MONTH, LONGITUDE, LATITUDE, CRIME_TYPE]
 # user selection
 
 filter_falls_within = 'Thames Valley Police'
-filter_month = '2020-11-1'
+filter_month = '2020-11-01'
+filter_month = datetime.strptime(filter_month, '%Y-%m-%d')
 delta = 0.05  # filter the area around the map centre
 
 # either refresh and filter the full dataset (REFRESH) or use the saved subset (SUBSET)
-data_selection = RunType.REFRESH
+data_selection = RunType.SUBSET
 
 # ======================================================================================================================
 # function definitions
@@ -146,5 +150,11 @@ if __name__ == '__main__':
 
         # and open the webpage
         input("Hit return...")
+
+        pagedict = {'filter_month': filter_month.strftime('%b-%Y'),
+                    'crime_type': crime_type,
+                    'url': url}
+        html = template.format(**pagedict)
+
         webbrowser.open(url)
 
