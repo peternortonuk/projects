@@ -13,7 +13,7 @@ https://maps.googleapis.com/maps/api/staticmap?center=Oxford%2CUK&zoom=13&size=6
 
 """
 import pandas as pd
-from crime.get_data import read_df_from_pickle
+from crime.get_data import read_df_from_pickle, save_df_to_pickle
 from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, FALLS_WITHIN, filter_falls_within, raw_url, COLOR, CRIME_TYPE
 from crime.create_map import map_dict, key_dict, latitude, longitude
 import seaborn as sns
@@ -33,17 +33,19 @@ def get_date_from_string(df):
     df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m')
 
 
-def add_color_for_column(df, col):
-    unique_vals = df[col].unique()
-    palette = sns.color_palette(None, len(unique_vals)).as_hex()
+def create_colors_for_items(items):
+    palette = sns.color_palette(None, len(items)).as_hex()
     palette = ['0x'+ss[1:] for ss in palette]  # replace # with 0x
-    zz = zip(unique_vals, palette)
-    value_to_color_dict = dict(zz)
-    df[COLOR] = df.apply(lambda x: value_to_color_dict[x[col]], axis='columns')
+    zz = zip(items, palette)
+    return dict(zz)
 
 
-def build_string_for_row(row):
-    return f'markers=color:{row.Color}%7Csize:tiny%7C{row.Latitude},{row.Longitude}'
+def build_string_for_location(row):
+    return f'{row.Latitude},{row.Longitude}'
+
+
+def build_string_for_marker(row):
+    return f'markers=color:{row.Color}%7Csize:tiny'
 
 
 if __name__ == '__main__':
@@ -76,22 +78,66 @@ if __name__ == '__main__':
         mask = condition1 & condition2
         df = df[mask]
 
+        # save it
+        save_df_to_pickle(df, subset_raw_pkl_file_name)
+
     elif data_selection == 'subset':
         df = read_df_from_pickle(subset_raw_pkl_file_name)
 
-    df = df.iloc[:40]
+    # ==================================================================================================================
+    # the full-size df
 
-    # add a colour based on unique values of a column
-    add_color_for_column(df, CRIME_TYPE)
+    # create the url string for each data point
+    df['string'] = df.apply(build_string_for_location, axis=1)
 
-    # build a string for each data point
-    df['string'] = df.apply(build_string_for_row, axis=1)
-    all_strings = '&'.join(df['string'].values)
+    # ==================================================================================================================
+    # aggregate df for marker definition
+
+    # get count of crimes per type and create df
+    df_marker = df[CRIME_TYPE].value_counts().to_frame()
+
+    # add a colour based on unique values of the index
+    mapper = create_colors_for_items(df_marker.index)
+    df_marker[COLOR] = df_marker.apply(lambda x: mapper[x.name], axis='columns')
+
+    # create the url string
+    df_marker['string'] = df_marker.apply(build_string_for_marker, axis=1)
+
+    # ==================================================================================================================
+    # top and tail the url
 
     map_params = urllib.parse.urlencode(map_dict)
     key_params = urllib.parse.urlencode(key_dict)
 
-    url = raw_url + '?' + map_params + '&' + all_strings + '&' + key_params
-    webbrowser.open(url)
-    pass
+    # ==================================================================================================================
+    # a subset df to deal with url size limit
+
+    print(df_marker)
+    print()
+    crime_types = df_marker.index
+    # crime_types = ['Burglary']
+    for crime_type in crime_types:
+
+        mask = df[CRIME_TYPE] == crime_type
+        df_subset = df[mask]
+        string_for_locations = '%7C'.join(df_subset['string'].values)
+
+        # build string for marker
+        mask = df_marker.index == crime_type
+        string_for_marker = df_marker[mask]['string'].values[0]
+
+        # the marker definition and all the locations
+        big_string = string_for_marker + '%7C' + string_for_locations
+
+        # connect it all together
+        url = raw_url + '?' + map_params + '&' + big_string + '&' + key_params
+
+        # check its not too big
+        # https://developers.google.com/maps/documentation/maps-static/start#url-size-restriction
+        assert len(url) <= 8192
+        print(f'\n\n"{crime_type}"... has string length = {len(url)}')
+
+        # and open the webpage
+        input("Hit return...")
+        webbrowser.open(url)
 
