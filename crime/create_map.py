@@ -1,11 +1,8 @@
 """
 https://developers.google.com/maps/documentation/maps-static/overview
-
-https://docs.python.org/3/howto/urllib2.html#urllib-howto
 http://www.compciv.org/guides/python/how-tos/creating-proper-url-query-strings/
 
 """
-
 from crime.credentials import api_key
 
 # Oxford,UK

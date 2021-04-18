@@ -1,36 +1,45 @@
 """
-examples:
-
-https://maps.googleapis.com/maps/api/staticmap?center=Berkeley,CA&zoom=14&size=400x400&key=YOUR_API_KEY
-
-https://maps.googleapis.com/maps/api/staticmap?center=63.259591,-144.667969&zoom=6&size=400x400
-&markers=color:blue%7Clabel:S%7C62.107733,-145.541936&markers=size:tiny%7Ccolor:green%7CDelta+Junction,AK
-&markers=size:mid%7Ccolor:0xFFFF00%7Clabel:C%7CTok,AK"&key=YOUR_API_KEY
-
-https://maps.googleapis.com/maps/api/staticmap?center=Oxford%2CUK&zoom=13&size=600x600&maptype=roadmap
-&markers=color:red%7C51.7520,-1.2577
-&key=AIzaSyCq7HOPVyJf8dVGFqOjqNaffgFzoUujzto
+this module filters the police data and builds the url
 
 """
 import pandas as pd
 from crime.get_data import read_df_from_pickle, save_df_to_pickle
-from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, FALLS_WITHIN, filter_falls_within, raw_url, COLOR, CRIME_TYPE
+from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, \
+    MONTH, LONGITUDE, LATITUDE, CRIME_TYPE, FALLS_WITHIN, COLOR
 from crime.create_map import map_dict, key_dict, latitude, longitude
 import seaborn as sns
 from urllib.parse import quote
 import urllib.parse
 import webbrowser
+from enum import Enum, auto
+
+# ======================================================================================================================
+# setup
 
 
-all_columns = ['Crime ID', 'Month', 'Reported by', 'Falls within', 'Longitude',
-               'Latitude', 'Location', 'LSOA code', 'LSOA name', 'Crime type',
-               'Last outcome category', 'Context']
+class RunType(Enum):
+    SUBSET = auto()
+    REFRESH = auto()
 
-selected_columns = ['Month', 'Longitude', 'Latitude', 'Crime type']
+
+selected_columns = [MONTH, LONGITUDE, LATITUDE, CRIME_TYPE]
+
+# ======================================================================================================================
+# user selection
+
+filter_falls_within = 'Thames Valley Police'
+filter_month = '2020-11-1'
+delta = 0.05  # filter the area around the map centre
+
+# either refresh and filter the full dataset (REFRESH) or use the saved subset (SUBSET)
+data_selection = RunType.REFRESH
+
+# ======================================================================================================================
+# function definitions
 
 
 def get_date_from_string(df):
-    df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m')
+    df[MONTH] = pd.to_datetime(df[MONTH], format='%Y-%m')
 
 
 def create_colors_for_items(items):
@@ -49,40 +58,40 @@ def build_string_for_marker(row):
 
 
 if __name__ == '__main__':
-    # get all the data
-    data_selection = 'subset'
 
-    if data_selection == 'all':
+    if data_selection == RunType.REFRESH:
         df = read_df_from_pickle(all_raw_pkl_file_name)
+
+        # report period is expressed as string in the form yyyy-mm; convert to date
+        get_date_from_string(df)
 
         # filter for the required geographical area
         mask = df[FALLS_WITHIN] == filter_falls_within
         df = df[mask]
-
-        # report period is expressed as string in the form yyyy-mm; convert to date
-        get_date_from_string(df)
 
         # exclude rows that have any nan values in important columns
         mask = df[selected_columns].isnull().any(axis='columns')
         df = df[~mask]
 
         # filter for months
-        month = pd.to_datetime('2020-11-1')
-        mask = df['Month'] == month
+        month = pd.to_datetime(filter_month)
+        mask = df[MONTH] == month
         df = df[mask]
 
         # filter for area
-        delta = 0.05
-        condition1 = df['Latitude'].between(latitude-delta, latitude+delta)
-        condition2 = df['Longitude'].between(longitude-delta, longitude+delta)
+        condition1 = df[LATITUDE].between(latitude-delta, latitude+delta)
+        condition2 = df[LONGITUDE].between(longitude-delta, longitude+delta)
         mask = condition1 & condition2
         df = df[mask]
 
         # save it
         save_df_to_pickle(df, subset_raw_pkl_file_name)
 
-    elif data_selection == 'subset':
+    elif data_selection == RunType.SUBSET:
         df = read_df_from_pickle(subset_raw_pkl_file_name)
+
+    else:
+        raise NotImplementedError
 
     # ==================================================================================================================
     # the full-size df
@@ -114,9 +123,7 @@ if __name__ == '__main__':
 
     print(df_marker)
     print()
-    crime_types = df_marker.index
-    # crime_types = ['Burglary']
-    for crime_type in crime_types:
+    for crime_type in df_marker.index:
 
         mask = df[CRIME_TYPE] == crime_type
         df_subset = df[mask]
