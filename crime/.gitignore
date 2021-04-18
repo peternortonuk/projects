@@ -1,5 +1,5 @@
 *.zip
 *.csv
-*.pkl
+all_raw.pkl
 credentials.py
 crime/__pycache__/
