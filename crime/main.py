@@ -9,12 +9,13 @@ import urllib.parse
 import webbrowser
 from enum import Enum, auto
 from datetime import datetime
+import os
 
 from crime.get_data import read_df_from_pickle, save_df_to_pickle
 from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, \
     MONTH, LONGITUDE, LATITUDE, CRIME_TYPE, FALLS_WITHIN, COLOR
 from crime.create_map import map_dict, key_dict, latitude, longitude
-from crime.html_template import template
+from crime.html_template import html_header, html_template_body, html_footer
 
 # ======================================================================================================================
 # setup
@@ -127,6 +128,7 @@ if __name__ == '__main__':
 
     print(df_marker)
     print()
+    html = ''
     for crime_type in df_marker.index:
 
         mask = df[CRIME_TYPE] == crime_type
@@ -148,13 +150,17 @@ if __name__ == '__main__':
         assert len(url) <= 8192
         print(f'\n\n"{crime_type}"... has string length = {len(url)}')
 
-        # and open the webpage
-        input("Hit return...")
-
+        # create the body html
         pagedict = {'filter_month': filter_month.strftime('%b-%Y'),
                     'crime_type': crime_type,
                     'url': url}
-        html = template.format(**pagedict)
+        html = html + html_template_body.format(**pagedict)
 
-        webbrowser.open(url)
+    # create a html file, write to it and close it
+    f = open('madness.html', 'w')
+    f.write(html_header + html + html_footer)
+    f.close()
+    filename = 'file:///'+os.getcwd()+'/' + 'madness.html'
 
+    # open the html file in a browser
+    webbrowser.open_new_tab(filename)
