@@ -62,32 +62,38 @@ def build_string_for_marker(row):
     return f'markers=color:{row.Color}%7Csize:tiny'
 
 
+
+def newmethod89():
+    # report period is expressed as string in the form yyyy-mm; convert to date
+    get_date_from_string(df)
+
+    # filter for the required geographical area
+    mask = df[FALLS_WITHIN] == filter_falls_within
+    df = df[mask]
+
+    # exclude rows that have any nan values in important columns
+    mask = df[selected_columns].isnull().any(axis='columns')
+    df = df[~mask]
+
+    # filter for months
+    month = pd.to_datetime(filter_month)
+    mask = df[MONTH] == month
+    df = df[mask]
+
+    # filter for area
+    condition1 = df[LATITUDE].between(latitude-delta, latitude+delta)
+    condition2 = df[LONGITUDE].between(longitude-delta, longitude+delta)
+    mask = condition1 & condition2
+    df = df[mask]
+    return df
+
 if __name__ == '__main__':
 
     if data_selection == RunType.REFRESH:
         df = read_df_from_pickle(all_raw_pkl_file_name)
 
         # report period is expressed as string in the form yyyy-mm; convert to date
-        get_date_from_string(df)
-
-        # filter for the required geographical area
-        mask = df[FALLS_WITHIN] == filter_falls_within
-        df = df[mask]
-
-        # exclude rows that have any nan values in important columns
-        mask = df[selected_columns].isnull().any(axis='columns')
-        df = df[~mask]
-
-        # filter for months
-        month = pd.to_datetime(filter_month)
-        mask = df[MONTH] == month
-        df = df[mask]
-
-        # filter for area
-        condition1 = df[LATITUDE].between(latitude-delta, latitude+delta)
-        condition2 = df[LONGITUDE].between(longitude-delta, longitude+delta)
-        mask = condition1 & condition2
-        df = df[mask]
+        df = newmethod89()
 
         # save it
         save_df_to_pickle(df, subset_raw_pkl_file_name)
