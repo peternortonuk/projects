@@ -17,7 +17,7 @@ import os
 from collections import namedtuple
 
 from crime.get_data import read_df_from_pickle, save_df_to_pickle
-from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, \
+from crime.constants import all_raw_pkl_file_name, subset_raw_pkl_file_name, raw_url, crime_folder_name, html_file_name, \
     MONTH, LONGITUDE, LATITUDE, CRIME_TYPE, FALLS_WITHIN, COLOR
 from crime.html_template import html_header, html_template_body, html_footer
 from crime.credentials import api_key
@@ -29,6 +29,7 @@ from crime.credentials import api_key
 class RunType(Enum):
     SUBSET = auto()
     REFRESH = auto()
+
 
 Location = namedtuple('Location', 'latitude, longitude')
 
@@ -42,8 +43,8 @@ filter_falls_within = 'Thames Valley Police'
 filter_month = '2020-11-01'
 filter_month = datetime.strptime(filter_month, '%Y-%m-%d')
 
-# Oxford,UK
-centre = Location(latitude=51.7520, longitude=-1.2577)
+# centre of the map
+centre = Location(latitude=51.7520, longitude=-1.2577)  # Oxford,UK
 delta = 0.05  # filter data for this area around the map centre
 
 # map size
@@ -56,6 +57,7 @@ data_selection = RunType.SUBSET
 
 # ======================================================================================================================
 # function definitions
+
 
 def get_date_from_string(df):
     df[MONTH] = pd.to_datetime(df[MONTH], format='%Y-%m')
@@ -100,7 +102,6 @@ def apply_filters(df, filter_falls_within, filter_month, centre, delta):
     df = df[mask]
 
 
-
 def build_df_marker(df):
     # get count of crimes per type and create aggregate df
     df_marker = df[CRIME_TYPE].value_counts().to_frame()
@@ -114,7 +115,6 @@ def build_df_marker(df):
     return df_marker
 
 
-
 def build_string_for_url(df, crime_type):
     # build string for location
     mask = df[CRIME_TYPE] == crime_type
@@ -126,7 +126,6 @@ def build_string_for_url(df, crime_type):
 
     # the marker definition and all the locations
     return string_for_marker + '%7C' + string_for_locations
-
 
 
 if __name__ == '__main__':
@@ -190,10 +189,10 @@ if __name__ == '__main__':
             html = html + html_template_body.format(**pagedict)
 
     # create a html file, write to it and close it
-    f = open('madness.html', 'w')
+    pathfile = os.path.join(crime_folder_name, html_file_name)
+    f = open(pathfile, 'w')
     f.write(html_header + html + html_footer)
     f.close()
-    filename = 'file:///'+os.getcwd()+'/' + 'madness.html'
 
     # open the html file in a browser
-    webbrowser.open_new_tab(filename)
+    webbrowser.open_new_tab(pathfile)
