@@ -29,9 +29,11 @@ from crime.credentials import api_key
 class RunType(Enum):
     SUBSET = auto()
     REFRESH = auto()
+    VIEW = auto()
 
 
 Location = namedtuple('Location', 'latitude, longitude')
+View = namedtuple('View', 'width, height, zoom')
 
 selected_columns = [MONTH, LATITUDE, LONGITUDE, CRIME_TYPE]
 
@@ -42,18 +44,19 @@ selected_columns = [MONTH, LATITUDE, LONGITUDE, CRIME_TYPE]
 filter_falls_within = 'Thames Valley Police'
 filter_month = '2020-11-01'
 filter_month = datetime.strptime(filter_month, '%Y-%m-%d')
+delta = 0.05  # filter data for this area around the map centre
 
 # centre of the map
 centre = Location(latitude=51.7520, longitude=-1.2577)  # Oxford,UK
-delta = 0.05  # filter data for this area around the map centre
 
 # map size
-width = 600
-height = 600
-zoom = 12
+view = View(width=600, height=600, zoom=12)
 
-# either refresh and filter the full dataset (REFRESH) or use the saved subset (SUBSET)
-data_selection = RunType.SUBSET
+# select how much of the process to run...
+# REFRESH = refresh the subset data based on filters
+# SUBSET = build the html directly from the saved subset of data
+# VIEW = just view the html
+data_selection = RunType.VIEW
 
 # ======================================================================================================================
 # function definitions
@@ -130,6 +133,61 @@ def build_string_for_url(df, crime_type):
     return string_for_marker + '%7C' + string_for_locations
 
 
+def build_url_parameters(centre, view, api_key):
+    # top and tail the url
+    map_dict = {'center': f'{centre.latitude},{centre.longitude}',
+                'zoom': view.zoom,
+                'size': f'{view.width}x{view.height}',
+                'maptype': 'roadmap'}
+
+    key_dict = {'key': api_key}
+
+    map_params = urllib.parse.urlencode(map_dict)
+    key_params = urllib.parse.urlencode(key_dict)
+
+    return map_params, key_params
+
+
+def build_url_for_crime_type(df, crime_type, raw_url, map_params, key_params):
+    # build string for location
+    big_string = build_string_for_url(df, crime_type)
+
+    # connect it all together
+    return raw_url + '?' + map_params + '&' + big_string + '&' + key_params
+
+
+def build_html_for_crime_type(url, crime_type, filter_month ,html_template_body):
+    # check its not too big
+    # https://developers.google.com/maps/documentation/maps-static/start#url-size-restriction
+    print(f'\n\n"{crime_type}"... has string length = {len(url)}')
+    if len(url) <= 8192:
+        # create the body html
+        pagedict = {'filter_month': filter_month.strftime('%b-%Y'),
+                    'crime_type': crime_type,
+                    'url': url}
+        return html_template_body.format(**pagedict)
+    else:
+        return None
+
+
+def build_html_file(df, df_marker, filter_month ,html_template_body, raw_url ,centre, view, api_key):
+    map_params, key_params = build_url_parameters(centre, view, api_key)
+    html = ''
+    for crime_type in df_marker.index:
+        url = build_url_for_crime_type(df, crime_type, raw_url, map_params, key_params)
+        html_statement = build_html_for_crime_type(url, crime_type, filter_month ,html_template_body)
+        html = html + html_statement
+    html_file = html_header + html + html_footer
+    return html_file
+
+
+def write_to_file(html_file, pathfile):
+    # create the file, write to it and close it
+    f = open(pathfile, 'w')
+    f.write(html_file)
+    f.close()
+
+
 if __name__ == '__main__':
 
     if data_selection == RunType.REFRESH:
@@ -139,62 +197,48 @@ if __name__ == '__main__':
         # clean and filter
         df = apply_filters(df, filter_falls_within, filter_month, centre, delta)
 
+        # create the url string for each data point
+        df['string'] = df.apply(build_string_for_location, axis=1)
+
         # save the subset
         save_df_to_pickle(df, subset_raw_pkl_file_name)
+
+        # create an aggregate df for the marker definition
+        df_marker = build_df_marker(df)
+        print(df_marker)
+
+        # build html file
+        html_file = build_html_file(df, df_marker, filter_month, html_template_body, raw_url, centre, view, api_key)
+
+        # save it
+        pathfile = os.path.join(crime_folder_name, html_file_name)
+        write_to_file(html_file, pathfile)
+
+        # open the html file in a browser
+        webbrowser.open_new_tab(pathfile)
 
     elif data_selection == RunType.SUBSET:
         # read the subset
         df = read_df_from_pickle(subset_raw_pkl_file_name)
 
+        # create an aggregate df for the marker definition
+        df_marker = build_df_marker(df)
+        print(df_marker)
+
+        # build html file
+        html_file = build_html_file(df, df_marker, filter_month, html_template_body, raw_url, centre, view, api_key)
+
+        # save it
+        pathfile = os.path.join(crime_folder_name, html_file_name)
+        write_to_file(html_file, pathfile)
+
+        # open the html file in a browser
+        webbrowser.open_new_tab(pathfile)
+
+    elif data_selection == RunType.VIEW:
+        # open the html file in a browser
+        pathfile = os.path.join(crime_folder_name, html_file_name)
+        webbrowser.open_new_tab(pathfile)
     else:
         raise NotImplementedError
 
-    # create the url string for each data point
-    df['string'] = df.apply(build_string_for_location, axis=1)
-
-    # create an aggregate df for the marker definition
-    df_marker = build_df_marker(df)
-
-    # top and tail the url
-    map_dict = {'center': f'{centre.latitude},{centre.longitude}',
-                'zoom': zoom,
-                'size': f'{width}x{height}',
-                'maptype': 'roadmap'}
-
-    key_dict = {'key': api_key}
-
-    map_params = urllib.parse.urlencode(map_dict)
-    key_params = urllib.parse.urlencode(key_dict)
-
-    # ==================================================================================================================
-    # create url for one crime_type at a time to deal with url size limit
-
-    print(df_marker)
-    print()
-    html = ''
-    for crime_type in df_marker.index:
-
-        # build string for location
-        big_string = build_string_for_url(df, crime_type)
-
-        # connect it all together
-        url = raw_url + '?' + map_params + '&' + big_string + '&' + key_params
-
-        # check its not too big
-        # https://developers.google.com/maps/documentation/maps-static/start#url-size-restriction
-        print(f'\n\n"{crime_type}"... has string length = {len(url)}')
-        if len(url) <= 8192:
-            # create the body html
-            pagedict = {'filter_month': filter_month.strftime('%b-%Y'),
-                        'crime_type': crime_type,
-                        'url': url}
-            html = html + html_template_body.format(**pagedict)
-
-    # create a html file, write to it and close it
-    pathfile = os.path.join(crime_folder_name, html_file_name)
-    f = open(pathfile, 'w')
-    f.write(html_header + html + html_footer)
-    f.close()
-
-    # open the html file in a browser
-    webbrowser.open_new_tab(pathfile)
