@@ -33,7 +33,7 @@ class RunType(Enum):
 
 Location = namedtuple('Location', 'latitude, longitude')
 
-selected_columns = [MONTH, LONGITUDE, LATITUDE, CRIME_TYPE]
+selected_columns = [MONTH, LATITUDE, LONGITUDE, CRIME_TYPE]
 
 # ======================================================================================================================
 # user selection
@@ -101,6 +101,8 @@ def apply_filters(df, filter_falls_within, filter_month, centre, delta):
     mask = condition1 & condition2
     df = df[mask]
 
+    return df
+
 
 def build_df_marker(df):
     # get count of crimes per type and create aggregate df
@@ -135,7 +137,7 @@ if __name__ == '__main__':
         df = read_df_from_pickle(all_raw_pkl_file_name)
 
         # clean and filter
-        apply_filters(df, filter_falls_within, filter_month, centre, delta)
+        df = apply_filters(df, filter_falls_within, filter_month, centre, delta)
 
         # save the subset
         save_df_to_pickle(df, subset_raw_pkl_file_name)
@@ -165,7 +167,7 @@ if __name__ == '__main__':
     key_params = urllib.parse.urlencode(key_dict)
 
     # ==================================================================================================================
-    # a subset df to deal with url size limit
+    # create url for one crime_type at a time to deal with url size limit
 
     print(df_marker)
     print()
