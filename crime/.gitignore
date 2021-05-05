@@ -2,5 +2,5 @@
 *.csv
 *.pyc
 all_raw.pkl
-credentials.py
+crime/credentials.py
 crime/__pycache__/
