@@ -1,3 +1,11 @@
+"""
+
+https://www.hsbc.co.uk/mortgages/repayment-calculator/
+https://en.wikipedia.org/wiki/Continuous-repayment_mortgage
+https://www.moneyadviceservice.org.uk/en/tools/mortgage-calculator
+
+"""
+
 import math
 
 PRINCIPAL = 'principal'
@@ -7,7 +15,7 @@ MONTHLY_REPAYMENT = 'monthly_repayment'
 
 inputs = {
     PRINCIPAL: 390_000,
-    ANNUAL_INTEREST_RATE: 0.03,
+    ANNUAL_INTEREST_RATE: 0.02,
     TERM: 15,
     MONTHLY_REPAYMENT: 2_509.69,
 }
@@ -15,6 +23,7 @@ inputs = {
 principal = inputs[PRINCIPAL]
 monthly_repayment = inputs[MONTHLY_REPAYMENT]
 annual_interest_rate = inputs[ANNUAL_INTEREST_RATE]
+term = inputs[TERM]
 
 
 monthly_interest_rate = annual_interest_rate / 12.0
@@ -23,7 +32,7 @@ continuously_compounded_rate = math.log(annualised_interest_rate_plus_one)
 
 
 def repayment_mortgage_recursive(p, r, c):
-    ii = 1
+    ii = 0
 
     def repayment_mortgage(p):
         if p <= 0:
@@ -32,20 +41,16 @@ def repayment_mortgage_recursive(p, r, c):
             ii += 1
             print(ii, p)
             return repayment_mortgage(p) * r - c + p
-
     repayment_mortgage(p)
 
 
 def repayment_mortgage_vanilla(p, r, c):
-    ii = 1
+    ii = 0
     while p >= 0:
+        ii += 1
         monthly_interest_charge = r * p
         p = p + monthly_interest_charge - c
-
-        yy, mm = divmod(ii, 12)
-        print(f'year={yy}, month={mm}, outstanding={principal}')
-
-        ii += 1
+    return ii, p
 
 
 def mortgage_continuously_compounded(p, r, t):
@@ -80,10 +85,11 @@ if __name__ == '__main__':
         except StopIteration:
             break
 
-    repayment_mortgage_vanilla(p=principal, r=monthly_interest_rate, c=monthly_repayment)
+    duration, remainder = repayment_mortgage_vanilla(p=principal, r=monthly_interest_rate, c=monthly_repayment)
+    yy, mm = divmod(duration, 12)
+    print(f'year={yy}, month={mm}, remainder={remainder}')
 
-    years = 3  # because why not?
-    mortgage_continuously_compounded(p=principal, r=continuously_compounded_rate, t=years)
+    total_cost = mortgage_continuously_compounded(p=principal, r=continuously_compounded_rate, t=term)
 
     repayment_mortgage_recursive(p=principal, r=monthly_interest_rate, c=monthly_repayment)
 
