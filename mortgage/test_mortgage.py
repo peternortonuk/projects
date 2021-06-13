@@ -15,7 +15,7 @@ inputs = {
 
 
 class TestFunctions(unittest.TestCase):
-    def test_repayment_mortgage(self):
-        ii, p = repayment_mortgage_vanilla(inputs[PRINCIPAL], inputs[ANNUAL_INTEREST_RATE], inputs[MONTHLY_REPAYMENT])
+    def test_repayment_mortgage_vanilla(self):
+        months, remainder = repayment_mortgage_vanilla(inputs[PRINCIPAL], inputs[ANNUAL_INTEREST_RATE], inputs[MONTHLY_REPAYMENT])
         truth = 180, -1.272502095111122
-        assert ii, p == truth
+        assert months, remainder == truth
