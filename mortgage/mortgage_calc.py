@@ -5,10 +5,9 @@ https://en.wikipedia.org/wiki/Continuous-repayment_mortgage
 https://www.moneyadviceservice.org.uk/en/tools/mortgage-calculator
 
 """
-
 import math
 from collections import namedtuple
-from mortgage.constants import PRINCIPAL, ANNUAL_INTEREST_RATE, TERM, MONTHLY_REPAYMENT
+from constants import PRINCIPAL, ANNUAL_INTEREST_RATE, TERM, MONTHLY_REPAYMENT
 
 # ==========================================================
 # user entered parameters
@@ -50,13 +49,14 @@ def repayment_mortgage_recursive(p, r, c):
     repayment_mortgage(p)
 
 
-def repayment_mortgage_vanilla(p, r, c):
-    ii = 0
-    while p >= 0:
-        ii += 1
-        monthly_interest_charge = r * p
-        p = p + monthly_interest_charge - c
-    return ii, p
+def repayment_mortgage_vanilla(principal, rate, monthly_repayment):
+    months = 0
+    while principal >= 0:
+        months += 1
+        monthly_interest_charge = (rate * principal)/12
+        assert monthly_repayment > monthly_interest_charge, 'mortgage will never converge'
+        principal = principal + monthly_interest_charge - monthly_repayment
+    return months, principal
 
 
 def mortgage_continuously_compounded(p, r, t):
