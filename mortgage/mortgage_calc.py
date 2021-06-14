@@ -1,14 +1,12 @@
 """
-
 https://www.hsbc.co.uk/mortgages/repayment-calculator/
 https://en.wikipedia.org/wiki/Continuous-repayment_mortgage
 https://www.moneyadviceservice.org.uk/en/tools/mortgage-calculator
 
 """
-
 import math
 from collections import namedtuple
-from mortgage.constants import PRINCIPAL, ANNUAL_INTEREST_RATE, TERM, MONTHLY_REPAYMENT
+from constants import PRINCIPAL, ANNUAL_INTEREST_RATE, TERM, MONTHLY_REPAYMENT
 
 # ==========================================================
 # user entered parameters
@@ -26,13 +24,15 @@ monthly_repayment = inputs[MONTHLY_REPAYMENT]
 annual_interest_rate = inputs[ANNUAL_INTEREST_RATE]
 term = inputs[TERM]
 
-interest_rates = namedtuple('interest_rates', 'monthly, annualised, continuously_compounded')
+interest_rates = namedtuple(
+    'interest_rates', 'monthly, annualised, continuously_compounded')
 
 
 def calc_rates_from_annual_interest_rate(annual_interest_rate):
     interest_rates.monthly = annual_interest_rate / 12.0
     annualised_interest_rate_plus_one = (1 + interest_rates.monthly) ** 12
-    interest_rates.continuously_compounded = math.log(annualised_interest_rate_plus_one)
+    interest_rates.continuously_compounded = math.log(
+        annualised_interest_rate_plus_one)
     interest_rates.annualised = annualised_interest_rate_plus_one - 1
     return interest_rates
 
@@ -50,13 +50,14 @@ def repayment_mortgage_recursive(p, r, c):
     repayment_mortgage(p)
 
 
-def repayment_mortgage_vanilla(p, r, c):
-    ii = 0
-    while p >= 0:
-        ii += 1
-        monthly_interest_charge = r * p
-        p = p + monthly_interest_charge - c
-    return ii, p
+def repayment_mortgage_vanilla(principal, rate, monthly_repayment):
+    months = 0
+    while principal >= 0:
+        months += 1
+        monthly_interest_charge = (rate * principal)/12
+        assert monthly_repayment > monthly_interest_charge, 'mortgage will never converge'
+        principal = principal + monthly_interest_charge - monthly_repayment
+    return months, principal
 
 
 def mortgage_continuously_compounded(p, r, t):
@@ -69,9 +70,9 @@ def single_coupon_monthly_compounded(c, r, n):
 
 def all_coupons_monthly_compounded(c, r, n):
     return sum(
-            single_coupon_monthly_compounded(c=c, r=r, n=month)
-            for month in range(n)
-        )
+        single_coupon_monthly_compounded(c=c, r=r, n=month)
+        for month in range(n)
+    )
 
 
 def repayment_mortgage_continuously_compounded(p, r, c):
@@ -80,7 +81,8 @@ def repayment_mortgage_continuously_compounded(p, r, c):
     debt = p
     while debt > investment:
         years = months / 12.0
-        debt = mortgage_continuously_compounded(p=p, r=r.continuously_compounded, t=years)
+        debt = mortgage_continuously_compounded(
+            p=p, r=r.continuously_compounded, t=years)
         investment = all_coupons_monthly_compounded(c=c, r=r.monthly, n=months)
         months += 1
         yield months, debt, investment
@@ -94,7 +96,8 @@ if __name__ == '__main__':
     # calculate as two separate cashflows:
     # 1) continuously compounded debt and 2) monthly compounded investment
 
-    gg = repayment_mortgage_continuously_compounded(p=principal, r=r, c=monthly_repayment)
+    gg = repayment_mortgage_continuously_compounded(
+        p=principal, r=r, c=monthly_repayment)
     while True:
         try:
             months, debt, investment = next(gg)
@@ -106,14 +109,16 @@ if __name__ == '__main__':
     # ====================================================================================
     # brute force calculation; both cashflows monthly compounded
 
-    duration, remainder = repayment_mortgage_vanilla(p=principal, r=r.monthly, c=monthly_repayment)
+    duration, remainder = repayment_mortgage_vanilla(
+        p=principal, r=r.monthly, c=monthly_repayment)
     yy, mm = divmod(duration, 12)
     print(f'\n\nyear={yy}, month={mm}, remainder={remainder}')
 
     # ====================================================================================
     # just the debt cashflow continuously compounded
 
-    total_cost = mortgage_continuously_compounded(p=principal, r=r.continuously_compounded, t=term)
+    total_cost = mortgage_continuously_compounded(
+        p=principal, r=r.continuously_compounded, t=term)
     print(f'\n\ntotal_cost={total_cost}')
 
     # ====================================================================================
@@ -121,5 +126,3 @@ if __name__ == '__main__':
 
     repayment_mortgage_recursive(p=principal, r=r.monthly, c=monthly_repayment)
     print()
-
-
