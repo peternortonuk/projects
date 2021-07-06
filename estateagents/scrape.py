@@ -19,12 +19,9 @@ for tag in tags:
 # find floorplan
 tags = soup.body
 tags = tags.find_all(href=re.compile('floorplan'))
-for tag in tags:
-    cc = list(tag.children)
-    for c in cc:
-        src = c.attrs.get('src')
-        if src:
-            floorplan_url = src
+floorplan_url = tags[0].attrs.get('href')
+floorplan_url = floorplan_url[2:]  # hackhackhack
+floorplan_url = page_url + floorplan_url
 pass
 
 
