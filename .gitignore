@@ -2,3 +2,5 @@
 *.iml
 *.enamlc
 *.png
+*.pyc
+*/__pycache__/*
