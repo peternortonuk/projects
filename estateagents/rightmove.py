@@ -38,5 +38,8 @@ pattern = r'_max_\d+x\d+'
 replace = ''
 floorplan_image_url = re.sub(pattern, replace, floorplan_image_url)
 
+# get text description and price and things
+
+# get photos
 
 pass
