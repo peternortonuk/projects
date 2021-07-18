@@ -64,8 +64,13 @@ def find_floorplan(_id):
     return floorplan_image_url
 
 
-# ======================================================================================================================
-# get text description and price and things
+def save_photos(id_, properties_dict):
+    pass
+
+
+def save_description(id_, properties_dict):
+    pass
+
 
 def save_floorplan(id_, properties_dict):
     # setup folder, path and filenames
@@ -88,6 +93,8 @@ if __name__ == '__main__':
     for id_ in ids:
         properties_dict[id_]['photo_urls'] = find_photos(id_)
         properties_dict[id_]['floorplan_url'] = find_floorplan(id_)
+        save_photos(id_, properties_dict)
+        save_description(id_, properties_dict)
         save_floorplan(id_, properties_dict)
 
 version = today_as_string
