@@ -124,13 +124,13 @@ class Scraper(Properties):
             self._find_photos(id_)
             self._find_floorplan(id_)
             self._create_folder_on_local_drive(id_)
-            # self._save_photos(id_)
-            # self._save_description(id_)
-            # self._save_floorplan(id_)
+            self._save_photos(id_)
+            self._save_description(id_)
+            self._save_floorplan(id_)
 
-        # version = self.today_as_string
-        # with shelve.open(self.rightmove_filename) as db:
-        #     db[version] = self.properties_dict
+        version = self.today_as_string
+        with shelve.open(self.rightmove_filename) as db:
+            db[version] = self.properties_dict
 
 
 if __name__ == '__main__':
