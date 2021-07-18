@@ -5,13 +5,16 @@ import re
 from bs4 import BeautifulSoup
 import os
 import shelve
+from datetime import date, datetime
 
-
+today = date.today()
+today_as_string = datetime.strftime(today, '%Y%m%d')
+rightmove_prefix = 'rm'  # for folder names
 page_url_template = r'https://www.rightmove.co.uk/properties/{id_}#/'
 floorplan_url_endpoint = r'floorplan?activePlan=1'
 project_folder = r'c:\dev\code\projects\estateagents'
 image_folder = os.path.join(project_folder, 'images')
-dict_filename = 'rightmove'
+rightmove_filename = os.path.join(project_folder, 'rightmove')
 
 
 def create_dict(ids):
@@ -66,7 +69,8 @@ def find_floorplan(_id):
 
 def save_floorplan(id_, properties_dict):
     # setup folder, path and filenames
-    this_property_image_folder = os.path.join(image_folder, str(id_))
+    folder_name = rightmove_prefix + str(id_)
+    this_property_image_folder = os.path.join(image_folder, folder_name)
     filename = properties_dict[id_]['floorplan_url'].split('/')[-1]
     this_property_image_folder_and_filename = os.path.join(this_property_image_folder, filename)
 
@@ -86,7 +90,6 @@ if __name__ == '__main__':
         properties_dict[id_]['floorplan_url'] = find_floorplan(id_)
         save_floorplan(id_, properties_dict)
 
-# with shelve.open('rightmove') as db:
-#     db = properties_dict
-
-print()
+version = today_as_string
+with shelve.open(rightmove_filename) as db:
+    db[version] = properties_dict

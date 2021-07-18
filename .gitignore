@@ -5,3 +5,6 @@
 *.pyc
 */__pycache__/*
 *.jpeg
+rightmove.bak
+rightmove.dat
+rightmove.dir
