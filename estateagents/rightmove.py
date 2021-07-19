@@ -54,12 +54,13 @@ class Scraper(Properties):
 
         key_features_string = 'Key features'
         [key_features_tag] = [t for t in h2 if t.string == key_features_string]
-        key_features = [c.string for c in key_features_tag.next_sibling.contents]
+        key_features = [str(c.string) for c in key_features_tag.next_sibling.contents]
 
         property_description_string = 'Property description'
         [property_description_tag] = [t for t in h2 if t.string == property_description_string]
-        property_description = [c.string for c in list(property_description_tag.next_siblings)[1].contents[0].contents
+        property_description = [str(c.string) for c in list(property_description_tag.next_siblings)[1].contents[0].contents
                                 if c.string != None]
+        property_description = '\n'.join(property_description)
 
         # paragraph tags
         p = tags.find_all('p')
@@ -131,9 +132,9 @@ class Scraper(Properties):
         for id_ in self.ids:
             self._get_soup(id_)
             self._get_description(id_)
+            self._find_photos(id_)
+            self._find_floorplan(id_)
             if self.image_scrape:
-                self._find_photos(id_)
-                self._find_floorplan(id_)
                 self._create_folder_on_local_drive(id_)
                 self._save_photos(id_)
                 self._save_floorplan(id_)
