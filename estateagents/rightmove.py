@@ -75,11 +75,19 @@ class Scraper(Properties):
         price = tags.find(string=re.compile(price_pattern))
         price = int(price[1:].replace(',', ''))
 
+        # property added date
+        added_date_pattern = r'\d{2}/\d{2}/\d{4}'
+        added_date_full_pattern = r'Added on ' + added_date_pattern
+        added_date = tags.find(string=re.compile(added_date_full_pattern))
+        added_date = re.search(added_date_pattern, added_date).group()
+        added_date = datetime.strptime(added_date, '%d/%m/%Y')
+
         # save into the dict
         self.properties_dict[id_]['property_details']['Tenure'] = tenure
         self.properties_dict[id_]['property_details']['Property Description'] = property_description
         self.properties_dict[id_]['property_details']['Price'] = price
         self.properties_dict[id_]['property_details']['Key Features'] = key_features
+        self.properties_dict[id_]['property_details']['Added Date'] = added_date
 
     def _find_photos(self, id_):
         tags = self.soup.head.find_all('meta')
@@ -164,7 +172,7 @@ class Viewer(Properties):
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
-    scrape = False
+    scrape = True
     view = not scrape
 
     if scrape:
