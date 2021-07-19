@@ -65,6 +65,10 @@ class Scraper(Properties):
                                 if c.string != None]
         property_description = '\n'.join(property_description)
 
+        # heading tags
+        h1 = tags.find_all('h1')
+        street_address_dict = {'itemprop': 'streetAddress'}
+
         # paragraph tags
         p = tags.find_all('p')
         tenure_string = 'Tenure:'
@@ -166,14 +170,40 @@ class Viewer(Properties):
         super().__init__()
         with shelve.open(self.rightmove_filename) as db:
             keys = sorted(list(db.keys()))
-            self.properties_dict = db[keys[-1]]
+            self.key = keys[-1]
+            self.properties_dict = db[self.key]
+
+    def save(self):
+        with shelve.open(self.rightmove_filename) as db:
+            db[self.key] = self.properties_dict
+
+
+class Enrich(Viewer):
+    enrich_dict = {110103536: {'enriched_details': {
+        'what3words': 'plank.barks.stick',
+        'street_address': '44 Cavell Rd, Oxford OX4 4AS',
+        'sale_status': 'sold STC',
+        'offer_accepted_date': '18-07-2021',
+        'offer_level': 'over 550k'}},
+        104647769: {'enriched_details': {
+            'street_address': '9 Temple St, Oxford OX4 1JS', }}
+    }
+
+    def __init__(self):
+        super().__init__()
+
+    def enrich(self):
+        for key in self.properties_dict.keys():
+            self.properties_dict[key].update(Enrich.enrich_dict[key])
+        self.save()
 
 
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
-    scrape = True
-    view = not scrape
+    scrape = False
+    view = True
+    enrich = False
 
     if scrape:
         s = Scraper(ids, image_scrape=False)
@@ -183,4 +213,10 @@ if __name__ == '__main__':
     if view:
         v = Viewer()
         pp(v.properties_dict)
+
+    if enrich:
+        e = Enrich()
+        e.enrich()
+        pp(e.properties_dict)
+        print()
 
