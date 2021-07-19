@@ -12,15 +12,14 @@ from pprint import pprint as pp
 
 class Properties:
 
-    def __init__(self):
-        today = date.today()
-        self.today_as_string = datetime.strftime(today, '%Y%m%d')
-        self.rightmove_prefix = 'rm'  # for folder names
-        self.property_url_template = r'https://www.rightmove.co.uk/properties/{id_}#/'
-        self.floorplan_url_endpoint = r'floorplan?activePlan=1'
-        self.project_folder = r'c:\dev\code\projects\estateagents'
-        self.image_folder_stub = os.path.join(self.project_folder, 'images')
-        self.rightmove_filename = os.path.join(self.project_folder, 'rightmove')
+    today = date.today()
+    today_as_string = datetime.strftime(today, '%Y%m%d')
+    rightmove_prefix = 'rm'  # for folder names
+    property_url_template = r'https://www.rightmove.co.uk/properties/{id_}#/'
+    floorplan_url_endpoint = r'floorplan?activePlan=1'
+    project_folder = r'c:\dev\code\projects\estateagents'
+    image_folder_stub = os.path.join(project_folder, 'images')
+    rightmove_filename = os.path.join(project_folder, 'rightmove')
 
 
 class Scraper(Properties):
@@ -28,7 +27,6 @@ class Scraper(Properties):
     def __init__(self, ids, image_scrape=True):
         self.ids = ids
         self.image_scrape = image_scrape
-        super().__init__()
         empty_details_dict = {
             'property_url': None,
             'floorplan': None,
@@ -65,9 +63,9 @@ class Scraper(Properties):
                                 if c.string != None]
         property_description = '\n'.join(property_description)
 
-        # heading tags
-        h1 = tags.find_all('h1')
-        street_address_dict = {'itemprop': 'streetAddress'}
+        # more heading tags
+        street_address = tags.find('h1', itemprop='streetAddress').string
+        street_address = str(street_address)
 
         # paragraph tags
         p = tags.find_all('p')
@@ -92,6 +90,7 @@ class Scraper(Properties):
         self.properties_dict[id_]['property_details']['Price'] = price
         self.properties_dict[id_]['property_details']['Key Features'] = key_features
         self.properties_dict[id_]['property_details']['Added Date'] = added_date
+        self.properties_dict[id_]['property_details']['Street Address'] = street_address
 
     def _find_photos(self, id_):
         tags = self.soup.head.find_all('meta')
@@ -167,7 +166,6 @@ class Scraper(Properties):
 class Viewer(Properties):
 
     def __init__(self):
-        super().__init__()
         with shelve.open(self.rightmove_filename) as db:
             keys = sorted(list(db.keys()))
             self.key = keys[-1]
