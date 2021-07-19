@@ -27,7 +27,7 @@ class Properties:
             'floorplan_url': None,
             'photo_filenames': [],
             'floorplan_image_filename': None,
-            'property_text': None,
+            'property_details': {},
         }
         self.properties_dict = {id_: empty_details_dict for id_ in self.ids}
 
@@ -53,15 +53,27 @@ class Scraper(Properties):
 
         key_features_string = 'Key features'
         [key_features_tag] = [t for t in h2 if t.string == key_features_string]
+        key_features = [c.string for c in key_features_tag.next_sibling.contents]
 
         property_description_string = 'Property description'
         [property_description_tag] = [t for t in h2 if t.string == property_description_string]
+        property_description = [c.string for c in list(property_description_tag.next_siblings)[1].contents[0].contents
+                                if c.string != None]
 
         # paragraph tags
         p = tags.find_all('p')
         tenure_string = 'Tenure:'
-        [tenure] = [t.contents[1].string for t in p if t.contents[0].string == tenure_string]
-        tenure = tenure.strip()
+        [tenure] = [t.contents[1].string.strip() for t in p if t.contents[0].string == tenure_string]
+
+        # price... not working at the moment
+        price_pattern = r'£\d{3},\d{3}'
+        price = tags.find(re.compile(price_pattern))
+        price = re.search(price_pattern, 'laksjfdlasflkaj £525,000 asdfhahelkjhdalkjhf').group()
+
+        self.properties_dict[id_]['property_details']['Tenure'] = tenure
+        self.properties_dict[id_]['property_details']['Property Description'] = property_description
+        self.properties_dict[id_]['property_details']['Price'] = price
+        self.properties_dict[id_]['property_details']['Key Features'] = key_features
 
     def _find_photos(self, id_):
         tags = self.soup.head.find_all('meta')
