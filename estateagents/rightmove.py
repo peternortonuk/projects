@@ -145,22 +145,34 @@ class Scraper(Properties):
         with urlopen(floorplan_url) as in_stream, open(filename, 'wb') as out_file:
             copyfileobj(in_stream, out_file)
 
-    def collect_and_save(self):
-        for id_ in self.ids:
-            self.properties_dict[id_]['property_url'] = self.property_url(id_)
-            self._get_soup(id_)
-            self._find_description(id_)
-            self._find_photos(id_)
-            self._find_floorplan(id_)
-            self._map_url_to_local_file(id_)
-            if self.image_scrape:
-                self._create_folder_on_local_drive(id_)
-                self._save_photos(id_)
-                self._save_floorplan(id_)
+    def _collect_one_property(self, id_):
+        self.properties_dict[id_]['property_url'] = self.property_url(id_)
+        self._get_soup(id_)
+        self._find_description(id_)
+        self._find_photos(id_)
+        self._find_floorplan(id_)
+        self._map_url_to_local_file(id_)
+        if self.image_scrape:
+            self._create_folder_on_local_drive(id_)
+            self._save_photos(id_)
+            self._save_floorplan(id_)
 
-        version = self.today_as_string
+    def collect_many_properties(self):
+        for id_ in self.ids:
+            self._collect_one_property(id_)
+
+    def save_all_data_as_new_file(self):
+        self.key = self.today_as_string
         with shelve.open(self.rightmove_filename) as db:
-            db[version] = self.properties_dict
+            db[self.key] = self.properties_dict
+
+    def update_latest_data_with_single_property(self, id_):
+        self.image_scrape = True
+        self._collect_one_property(id_)
+        with shelve.open(self.rightmove_filename) as db:
+            keys = sorted(list(db.keys()))
+            self.key = keys[-1]
+            db[self.key][id_] = self.properties_dict[id_]
 
 
 class Viewer(Properties):
@@ -199,13 +211,14 @@ class Enrich(Viewer):
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
-    scrape = False
-    view = True
+    scrape = True
+    view = False
     enrich = False
 
     if scrape:
         s = Scraper(ids, image_scrape=False)
-        s.collect_and_save()
+        #s.collect_many_properties()
+        s.update_latest_data_with_single_property(id_=107624576)
         pp(s.properties_dict)
 
     if view:
