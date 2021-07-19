@@ -71,9 +71,9 @@ class Scraper(Properties):
 
     def _find_floorplan(self, id_):
         page_url = self.page_url_template.format(id_=id_)
-        self.properties_dict[id_]['floorplan_url'] = page_url + self.floorplan_url_endpoint
+        floorplan_url = page_url + self.floorplan_url_endpoint
 
-        with urlopen(self.properties_dict[id_]['floorplan_url']) as response:
+        with urlopen(floorplan_url) as response:
             html_doc = response.read()
 
         soup = BeautifulSoup(html_doc, 'html.parser')
@@ -84,8 +84,7 @@ class Scraper(Properties):
         # remove the image size control _max_296x197.jpeg
         pattern = r'_max_\d+x\d+'
         replace = ''
-        floorplan_image_url = re.sub(pattern, replace, floorplan_image_url)
-        self.properties_dict[id_]['floorplan_url'] = floorplan_image_url
+        self.properties_dict[id_]['floorplan_url'] = re.sub(pattern, replace, floorplan_image_url)
 
     def _save_photos(self, id_):
         for photo_url in self.properties_dict[id_]['photo_urls']:
