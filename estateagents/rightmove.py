@@ -49,7 +49,7 @@ class Scraper(Properties):
 
         self.soup = BeautifulSoup(html_doc, 'html.parser')
 
-    def _get_description(self, id_):
+    def _find_description(self, id_):
         tags = self.soup.body.find('div', id='root')
 
         # heading tags
@@ -138,7 +138,7 @@ class Scraper(Properties):
         for id_ in self.ids:
             self.properties_dict[id_]['property_url'] = self.property_url(id_)
             self._get_soup(id_)
-            self._get_description(id_)
+            self._find_description(id_)
             self._find_photos(id_)
             self._find_floorplan(id_)
             self._map_url_to_local_file(id_)
