@@ -34,8 +34,9 @@ class Properties:
 
 class Scraper(Properties):
 
-    def __init__(self, ids):
+    def __init__(self, ids, image_scrape=True):
         super().__init__(ids)
+        self.image_scrape = image_scrape
 
     def _get_soup(self, id_):
         page_url = self.page_url_template.format(id_=id_)
@@ -45,7 +46,7 @@ class Scraper(Properties):
 
         self.soup = BeautifulSoup(html_doc, 'html.parser')
 
-    def _find_description(self, id_):
+    def _get_description(self, id_):
         tags = self.soup.body.find('div', id='root')
 
         # heading tags
@@ -65,11 +66,12 @@ class Scraper(Properties):
         tenure_string = 'Tenure:'
         [tenure] = [t.contents[1].string.strip() for t in p if t.contents[0].string == tenure_string]
 
-        # price... not working at the moment
+        # price
         price_pattern = r'£\d{3},\d{3}'
-        price = tags.find(re.compile(price_pattern))
-        price = re.search(price_pattern, 'laksjfdlasflkaj £525,000 asdfhahelkjhdalkjhf').group()
+        price = tags.find(string=re.compile(price_pattern))
+        price = int(price[1:].replace(',', ''))
 
+        # save into the dict
         self.properties_dict[id_]['property_details']['Tenure'] = tenure
         self.properties_dict[id_]['property_details']['Property Description'] = property_description
         self.properties_dict[id_]['property_details']['Price'] = price
@@ -98,6 +100,14 @@ class Scraper(Properties):
         replace = ''
         self.properties_dict[id_]['floorplan_url'] = re.sub(pattern, replace, floorplan_image_url)
 
+    def _create_folder_on_local_drive(self, id_):
+        # create folder name and path
+        folder_name = self.rightmove_prefix + str(id_)
+        self.image_folder = os.path.join(self.image_folder_stub, folder_name)
+
+        # create folder if it doesnt exist
+        Path(self.image_folder).mkdir(parents=True, exist_ok=True)
+
     def _save_photos(self, id_):
         for photo_url in self.properties_dict[id_]['photo_urls']:
             filename = photo_url.split('/')[-1]
@@ -107,17 +117,6 @@ class Scraper(Properties):
             # open the url and save the image
             with urlopen(photo_url) as in_stream, open(filename, 'wb') as out_file:
                 copyfileobj(in_stream, out_file)
-
-    def _save_description(self, id_):
-        pass
-
-    def _create_folder_on_local_drive(self, id_):
-        # create folder name and path
-        folder_name = self.rightmove_prefix + str(id_)
-        self.image_folder = os.path.join(self.image_folder_stub, folder_name)
-
-        # create folder if it doesnt exist
-        Path(self.image_folder).mkdir(parents=True, exist_ok=True)
 
     def _save_floorplan(self, id_):
         # get the filename from the url and add full path to dict
@@ -131,13 +130,13 @@ class Scraper(Properties):
     def collect_and_save(self):
         for id_ in self.ids:
             self._get_soup(id_)
-            self._find_description(id_)
-            self._find_photos(id_)
-            self._find_floorplan(id_)
-            self._create_folder_on_local_drive(id_)
-            self._save_photos(id_)
-            self._save_description(id_)
-            self._save_floorplan(id_)
+            self._get_description(id_)
+            if self.image_scrape:
+                self._find_photos(id_)
+                self._find_floorplan(id_)
+                self._create_folder_on_local_drive(id_)
+                self._save_photos(id_)
+                self._save_floorplan(id_)
 
         version = self.today_as_string
         with shelve.open(self.rightmove_filename) as db:
@@ -146,7 +145,7 @@ class Scraper(Properties):
 
 if __name__ == '__main__':
     ids = [104647769, 110103536]
-    s = Scraper(ids)
+    s = Scraper(ids, image_scrape=False)
     s.collect_and_save()
 
     pp(s.properties_dict)
