@@ -171,11 +171,11 @@ class DAO:
         self.properties_dict = {}
         with shelve.open(self.rightmove_filename) as db:
             keys = list(db.keys()) or []
-            keys = sorted(keys)
-            if key in keys:
+            self.keys = sorted(keys)
+            if key in self.keys:
                 self.key = key
             else:
-                self.key = keys[-1]
+                self.key = self.keys[-1]
 
     def create_new_key(self):
         today = date.today()
@@ -194,7 +194,7 @@ class DAO:
         with shelve.open(self.rightmove_filename) as db:
             self.properties_dict = db[self.key]
             self.properties_dict.update(single_property_dict)
-            self.properties_dict[self.key] = self.properties_dict
+            db[self.key] = self.properties_dict
 
     def update_enriched_details(self, id_, enriched_details_dict):
         with shelve.open(self.rightmove_filename) as db:
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     scrapes = False
     view = False
     enrich = False
-    add_one = True
+    add_one = False
     delete_a_key = False
 
     if scrape:
@@ -302,4 +302,3 @@ if __name__ == '__main__':
         d = DAO()
         d.delete_version(db_version)
 
-print()
