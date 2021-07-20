@@ -40,6 +40,7 @@ class Scraper(Properties):
 
     def _get_property_url(self):
         self.property_url = self.property_url_template.format(id_=self.id)
+        self.property_dict[self.id]['property_url'] = self.property_url
 
     def _get_soup(self):
         with urlopen(self.property_url) as response:
@@ -134,13 +135,13 @@ class Scraper(Properties):
         Path(self.image_folder).mkdir(parents=True, exist_ok=True)
 
     def _save_photos(self):
-        for photo_url, filename in self.property_dict['photos']:
+        for photo_url, filename in self.property_dict[self.id]['photos']:
             # open the url and save the image
             with urlopen(photo_url) as in_stream, open(filename, 'wb') as out_file:
                 copyfileobj(in_stream, out_file)
 
     def _save_floorplan(self):
-        floorplan_url, filename = self.property_dict['floorplan']
+        floorplan_url, filename = self.property_dict[self.id]['floorplan']
         # open the url and save the image
         with urlopen(floorplan_url) as in_stream, open(filename, 'wb') as out_file:
             copyfileobj(in_stream, out_file)
@@ -159,16 +160,19 @@ class Scraper(Properties):
         return self.property_dict
 
 
-class Viewer(Properties):
+class Viewer:
 
-    def __init__(self):
-        with shelve.open(self.rightmove_filename) as db:
-            keys = sorted(list(db.keys()))
-            self.key = keys[-1]
+    def __init__(self, key=None):
+        with shelve.open(Properties.rightmove_filename) as db:
+            if key:
+                self.key = key
+            else:
+                keys = sorted(list(db.keys()))
+                self.key = keys[-1]
             self.properties_dict = db[self.key]
 
     def save(self):
-        with shelve.open(self.rightmove_filename) as db:
+        with shelve.open(Properties.rightmove_filename) as db:
             db[self.key] = self.properties_dict
 
 
@@ -216,14 +220,15 @@ def update_latest_data_with_single_property(id_, image_scrape=True):
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
+    id_ = 107624576
     scrape = True
     view = False
     enrich = False
+    add_one = False
 
     if scrape:
         dd = collect_many_properties(ids)
         save_all_data_as_new_file(dd)
-        #s.update_latest_data_with_single_property(id_=107624576)
         pp(dd)
 
     if view:
@@ -234,5 +239,7 @@ if __name__ == '__main__':
         e = Enrich()
         e.enrich()
         pp(e.properties_dict)
-        print()
+
+    if add_one:
+        update_latest_data_with_single_property(id_=107624576, image_scrape=False)
 
