@@ -10,10 +10,8 @@ import copy
 from pprint import pprint as pp
 
 
-class Properties:
+class Property:
 
-    today = date.today()
-    today_as_string = datetime.strftime(today, '%Y%m%d')
     rightmove_prefix = 'rm'  # for folder names
     property_url_template = r'https://www.rightmove.co.uk/properties/{id_}#/'
     floorplan_url_endpoint = r'floorplan?activePlan=1'
@@ -29,12 +27,15 @@ class Properties:
     }
 
 
-class Scraper(Properties):
+class Scrape(Property):
+    """
+    This class performs a single scrape it builds a dict of data and saves images to a local drive
+    """
 
     def __init__(self, id_, image_scrape=False):
         self.id = id_
         self.image_scrape = image_scrape
-        self.property_dict = {self.id: copy.deepcopy(Properties.empty_details_dict)}
+        self.property_dict = {self.id: copy.deepcopy(Property.empty_details_dict)}
         self.floorplan_url = ''
         self.photo_urls = []
 
@@ -160,79 +161,131 @@ class Scraper(Properties):
         return self.property_dict
 
 
-class Viewer:
+class DAO:
+    """
+    This class interfaces with the shelve object.
+    """
 
     def __init__(self, key=None):
-        with shelve.open(Properties.rightmove_filename) as db:
-            if key:
+        self.rightmove_filename = Property.rightmove_filename
+        self.properties_dict = {}
+        with shelve.open(self.rightmove_filename) as db:
+            keys = list(db.keys()) or []
+            keys = sorted(keys)
+            if key in keys:
                 self.key = key
             else:
-                keys = sorted(list(db.keys()))
                 self.key = keys[-1]
+
+    def create_new_key(self):
+        today = date.today()
+        self.key = datetime.strftime(today, '%Y%m%d')
+
+    def load(self):
+        with shelve.open(self.rightmove_filename) as db:
             self.properties_dict = db[self.key]
 
     def save(self):
-        with shelve.open(Properties.rightmove_filename) as db:
+        if self.properties_dict != {}:
+            with shelve.open(self.rightmove_filename) as db:
+                db[self.key] = self.properties_dict
+
+    def update(self, single_property_dict):
+        with shelve.open(self.rightmove_filename) as db:
+            self.properties_dict = db[self.key]
+            self.properties_dict.update(single_property_dict)
+            self.properties_dict[self.key] = self.properties_dict
+
+    def update_enriched_details(self, id_, enriched_details_dict):
+        with shelve.open(self.rightmove_filename) as db:
+            self.properties_dict = db[self.key]
+            self.properties_dict[id_].update(enriched_details_dict)
             db[self.key] = self.properties_dict
 
+    def delete_version(self, key):
+        with shelve.open(self.rightmove_filename) as db:
+            keys = list(db.keys()) or []
+            if key in keys:
+                self.key = key
+            del db[key]
 
-class Enrich(Viewer):
-    enrich_dict = {110103536: {'enriched_details': {
-        'what3words': 'plank.barks.stick',
-        'street_address': '44 Cavell Rd, Oxford OX4 4AS',
-        'sale_status': 'sold STC',
-        'offer_accepted_date': '18-07-2021',
-        'offer_level': 'over 550k'}},
-        104647769: {'enriched_details': {
-            'street_address': '9 Temple St, Oxford OX4 1JS', }}
+
+class Scrapes(DAO):
+    """
+    This class inherits from DAO so it can interface with the shelve object
+    And uses the Scrape (single property) class to run multiple scrapes where required
+    """
+    def __init__(self):
+        super().__init__()
+        self.load()
+
+    def collect_many_properties(self, ids, image_scrape=False):
+        for id_ in ids:
+            d = Scrape(id_, image_scrape=image_scrape).collect_a_property()
+            self.properties_dict.update(d)
+
+    def save_all_data_as_new_file(self):
+        self.create_new_key()
+        self.save()
+
+    def update_latest_data_with_single_property(self, id_, image_scrape=True):
+        single_property_dict = Scrape(id_, image_scrape=image_scrape).collect_a_property()
+        self.update(single_property_dict)
+
+
+class Enrich(DAO):
+    enrich_dict = {
+        110103536: {'enriched_details':
+            {
+            'what3words': 'plank.barks.stick',
+            'street_address': '44 Cavell Rd, Oxford OX4 4AS',
+            'sale_status': 'sold STC',
+            'offer_accepted_date': '18-07-2021',
+            'offer_level': 'over 550k'}
+            },
+        104647769: {'enriched_details':
+            {
+            'street_address': '9 Temple St, Oxford OX4 1JS',
+            }
+        }
     }
 
     def __init__(self):
         super().__init__()
+        self.load()
 
     def enrich(self):
-        for key in self.properties_dict.keys():
-            self.properties_dict[key].update(Enrich.enrich_dict[key])
-        self.save()
-
-
-def collect_many_properties(ids, properties_dict={}, image_scrape=False):
-    for id_ in ids:
-        d = Scraper(id_, image_scrape=image_scrape).collect_a_property()
-        properties_dict.update(d)
-    return properties_dict
-
-
-def save_all_data_as_new_file(properties_dict):
-    key = Properties.today_as_string
-    with shelve.open(Properties.rightmove_filename) as db:
-        db[key] = properties_dict
-
-
-def update_latest_data_with_single_property(id_, image_scrape=True):
-    d = Scraper(id_, image_scrape=image_scrape).collect_a_property()
-    with shelve.open(Properties.rightmove_filename) as db:
-        keys = sorted(list(db.keys()))
-        key = keys[-1]
-        db[key][id_] = d
+        for id_, enriched_details_dict in Enrich.enrich_dict.items():
+            self.update_enriched_details(id_, enriched_details_dict)
 
 
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
     id_ = 107624576
-    scrape = True
+    db_version = '20210720'
+
+    scrape = False
+    scrapes = False
     view = False
     enrich = False
-    add_one = False
+    add_one = True
+    delete_a_key = False
 
     if scrape:
-        dd = collect_many_properties(ids)
-        save_all_data_as_new_file(dd)
+        dd = Scrape(id_).collect_a_property()
         pp(dd)
 
+    if scrapes:
+        s = Scrapes()
+        s.collect_many_properties(ids)
+        s.create_new_key()
+        s.save()
+        pp(s.properties_dict)
+
     if view:
-        v = Viewer()
+        v = DAO()
+        v.load()
         pp(v.properties_dict)
 
     if enrich:
@@ -241,5 +294,12 @@ if __name__ == '__main__':
         pp(e.properties_dict)
 
     if add_one:
-        update_latest_data_with_single_property(id_=107624576, image_scrape=False)
+        s = Scrapes()
+        s.update_latest_data_with_single_property(id_=107624576, image_scrape=False)
+        pp(s.properties_dict)
 
+    if delete_a_key:
+        d = DAO()
+        d.delete_version(db_version)
+
+print()
