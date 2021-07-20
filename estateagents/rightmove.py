@@ -21,33 +21,33 @@ class Properties:
     image_folder_stub = os.path.join(project_folder, 'images')
     rightmove_filename = os.path.join(project_folder, 'rightmove')
 
+    empty_details_dict = {
+        'property_url': None,
+        'floorplan': None,
+        'photos': [],
+        'property_details': {},
+    }
+
 
 class Scraper(Properties):
 
-    def __init__(self, ids, image_scrape=True):
-        self.ids = ids
+    def __init__(self, id_, image_scrape=False):
+        self.id = id_
         self.image_scrape = image_scrape
-        empty_details_dict = {
-            'property_url': None,
-            'floorplan': None,
-            'photos': [],
-            'property_details': {},
-        }
-        self.properties_dict = {id_: copy.deepcopy(empty_details_dict) for id_ in self.ids}
-
+        self.property_dict = {self.id: copy.deepcopy(Properties.empty_details_dict)}
         self.floorplan_url = ''
         self.photo_urls = []
 
-    def property_url(self, id_):
-        return self.property_url_template.format(id_=id_)
+    def _get_property_url(self):
+        self.property_url = self.property_url_template.format(id_=self.id)
 
-    def _get_soup(self, id_):
-        with urlopen(self.property_url(id_)) as response:
+    def _get_soup(self):
+        with urlopen(self.property_url) as response:
             html_doc = response.read()
 
         self.soup = BeautifulSoup(html_doc, 'html.parser')
 
-    def _find_description(self, id_):
+    def _find_description(self):
         tags = self.soup.body.find('div', id='root')
 
         # heading tags
@@ -85,21 +85,21 @@ class Scraper(Properties):
         added_date = datetime.strptime(added_date, '%d/%m/%Y')
 
         # save into the dict
-        self.properties_dict[id_]['property_details']['Tenure'] = tenure
-        self.properties_dict[id_]['property_details']['Property Description'] = property_description
-        self.properties_dict[id_]['property_details']['Price'] = price
-        self.properties_dict[id_]['property_details']['Key Features'] = key_features
-        self.properties_dict[id_]['property_details']['Added Date'] = added_date
-        self.properties_dict[id_]['property_details']['Street Address'] = street_address
+        self.property_dict[self.id]['property_details']['Tenure'] = tenure
+        self.property_dict[self.id]['property_details']['Property Description'] = property_description
+        self.property_dict[self.id]['property_details']['Price'] = price
+        self.property_dict[self.id]['property_details']['Key Features'] = key_features
+        self.property_dict[self.id]['property_details']['Added Date'] = added_date
+        self.property_dict[self.id]['property_details']['Street Address'] = street_address
 
-    def _find_photos(self, id_):
+    def _find_photos(self):
         tags = self.soup.head.find_all('meta')
         for tag in tags:
             if tag.attrs.get('property') == 'og:image':
                 self.photo_urls.append(tag['content'])
 
-    def _find_floorplan(self, id_):
-        floorplan_page_url = self.property_url(id_) + self.floorplan_url_endpoint
+    def _find_floorplan(self):
+        floorplan_page_url = self.property_url + self.floorplan_url_endpoint
 
         with urlopen(floorplan_page_url) as response:
             html_doc = response.read()
@@ -114,65 +114,49 @@ class Scraper(Properties):
         replace = ''
         self.floorplan_url = re.sub(pattern, replace, floorplan_url)
 
-    def _map_url_to_local_file(self, id_):
-        folder_name = self.rightmove_prefix + str(id_)
+    def _map_url_to_local_file(self):
+        folder_name = self.rightmove_prefix + str(self.id)
         self.image_folder = os.path.join(self.image_folder_stub, folder_name)
 
         # create list of tuple pairs for photos
         for photo_url in self.photo_urls:
             filename = photo_url.split('/')[-1]
             filename = os.path.join(self.image_folder, filename)
-            self.properties_dict[id_]['photos'].append(tuple([photo_url, filename]))
+            self.property_dict[self.id]['photos'].append(tuple([photo_url, filename]))
 
         # create single tuple pair for floorplan
         filename = self.floorplan_url.split('/')[-1]
         filename = os.path.join(self.image_folder, filename)
-        self.properties_dict[id_]['floorplan'] = (self.floorplan_url, filename)
+        self.property_dict[self.id]['floorplan'] = (self.floorplan_url, filename)
 
-    def _create_folder_on_local_drive(self, id_):
+    def _create_folder_on_local_drive(self):
         # create folder if it doesnt exist
         Path(self.image_folder).mkdir(parents=True, exist_ok=True)
 
-    def _save_photos(self, id_):
-        for photo_url, filename in self.properties_dict[id_]['photos']:
+    def _save_photos(self):
+        for photo_url, filename in self.property_dict['photos']:
             # open the url and save the image
             with urlopen(photo_url) as in_stream, open(filename, 'wb') as out_file:
                 copyfileobj(in_stream, out_file)
 
-    def _save_floorplan(self, id_):
-        floorplan_url, filename = self.properties_dict[id_]['floorplan']
+    def _save_floorplan(self):
+        floorplan_url, filename = self.property_dict['floorplan']
         # open the url and save the image
         with urlopen(floorplan_url) as in_stream, open(filename, 'wb') as out_file:
             copyfileobj(in_stream, out_file)
 
-    def _collect_one_property(self, id_):
-        self.properties_dict[id_]['property_url'] = self.property_url(id_)
-        self._get_soup(id_)
-        self._find_description(id_)
-        self._find_photos(id_)
-        self._find_floorplan(id_)
-        self._map_url_to_local_file(id_)
+    def collect_a_property(self):
+        self._get_property_url()
+        self._get_soup()
+        self._find_description()
+        self._find_photos()
+        self._find_floorplan()
+        self._map_url_to_local_file()
         if self.image_scrape:
-            self._create_folder_on_local_drive(id_)
-            self._save_photos(id_)
-            self._save_floorplan(id_)
-
-    def collect_many_properties(self):
-        for id_ in self.ids:
-            self._collect_one_property(id_)
-
-    def save_all_data_as_new_file(self):
-        self.key = self.today_as_string
-        with shelve.open(self.rightmove_filename) as db:
-            db[self.key] = self.properties_dict
-
-    def update_latest_data_with_single_property(self, id_):
-        self.image_scrape = True
-        self._collect_one_property(id_)
-        with shelve.open(self.rightmove_filename) as db:
-            keys = sorted(list(db.keys()))
-            self.key = keys[-1]
-            db[self.key][id_] = self.properties_dict[id_]
+            self._create_folder_on_local_drive()
+            self._save_photos()
+            self._save_floorplan()
+        return self.property_dict
 
 
 class Viewer(Properties):
@@ -208,6 +192,27 @@ class Enrich(Viewer):
         self.save()
 
 
+def collect_many_properties(ids, properties_dict={}, image_scrape=False):
+    for id_ in ids:
+        d = Scraper(id_, image_scrape=image_scrape).collect_a_property()
+        properties_dict.update(d)
+    return properties_dict
+
+
+def save_all_data_as_new_file(properties_dict):
+    key = Properties.today_as_string
+    with shelve.open(Properties.rightmove_filename) as db:
+        db[key] = properties_dict
+
+
+def update_latest_data_with_single_property(id_, image_scrape=True):
+    d = Scraper(id_, image_scrape=image_scrape).collect_a_property()
+    with shelve.open(Properties.rightmove_filename) as db:
+        keys = sorted(list(db.keys()))
+        key = keys[-1]
+        db[key][id_] = d
+
+
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
@@ -216,10 +221,10 @@ if __name__ == '__main__':
     enrich = False
 
     if scrape:
-        s = Scraper(ids, image_scrape=False)
-        #s.collect_many_properties()
-        s.update_latest_data_with_single_property(id_=107624576)
-        pp(s.properties_dict)
+        dd = collect_many_properties(ids)
+        save_all_data_as_new_file(dd)
+        #s.update_latest_data_with_single_property(id_=107624576)
+        pp(dd)
 
     if view:
         v = Viewer()
