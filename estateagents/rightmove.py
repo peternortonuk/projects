@@ -39,12 +39,12 @@ class Scrape(Property):
         self.floorplan_url = ''
         self.photo_urls = []
 
-    def _get_property_url(self):
-        self.property_url = self.property_url_template.format(id_=self.id)
-        self.property_dict[self.id]['property_url'] = self.property_url
+    def _get_page_url(self):
+        self.page_url = self.property_url_template.format(id_=self.id)
+        self.property_dict[self.id]['property_url'] = self.page_url
 
     def _get_soup(self):
-        with urlopen(self.property_url) as response:
+        with urlopen(self.page_url) as response:
             html_doc = response.read()
 
         self.soup = BeautifulSoup(html_doc, 'html.parser')
@@ -101,7 +101,7 @@ class Scrape(Property):
                 self.photo_urls.append(tag['content'])
 
     def _find_floorplan(self):
-        floorplan_page_url = self.property_url + self.floorplan_url_endpoint
+        floorplan_page_url = self.page_url + self.floorplan_url_endpoint
 
         with urlopen(floorplan_page_url) as response:
             html_doc = response.read()
@@ -148,7 +148,7 @@ class Scrape(Property):
             copyfileobj(in_stream, out_file)
 
     def collect_a_property(self):
-        self._get_property_url()
+        self._get_page_url()
         self._get_soup()
         self._find_description()
         self._find_photos()
@@ -259,6 +259,32 @@ class Enrich(DAO):
             self.update_enriched_details(id_, enriched_details_dict)
 
 
+class Favourites():
+
+    def __init__(self):
+        self.page_url = r'https://www.rightmove.co.uk/user/shortlist.html'
+
+    def _get_soup(self):
+        with urlopen(self.page_url) as response:
+            html_doc = response.read()
+
+        self.soup = BeautifulSoup(html_doc, 'html.parser')
+
+    def _find_favourites(self):
+        """
+        <a href="/properties/110423867" data-test="saved-property-title"><span class="title">Victor Street, Jericho</span></a>
+        :return:
+        """
+        pattern = r'/properties/\d+'
+        tags = self.soup.body.find_all('div', id='content')
+        ids = []  # tags.find_all('a', string=re.compile(pattern))
+        return ids
+
+    def collect_favourites(self):
+        self._get_soup()
+        return self._find_favourites()
+
+
 if __name__ == '__main__':
 
     ids = [104647769, 110103536]
@@ -271,6 +297,7 @@ if __name__ == '__main__':
     enrich = False
     add_one = False
     delete_a_key = False
+    collect_favourites = True
 
     if scrape:
         dd = Scrape(id_).collect_a_property()
@@ -301,4 +328,9 @@ if __name__ == '__main__':
     if delete_a_key:
         d = DAO()
         d.delete_version(db_version)
+
+    if collect_favourites:
+        f = Favourites().collect_favourites()
+
+
 
