@@ -297,7 +297,7 @@ if __name__ == '__main__':
     enrich = False
     add_one = False
     delete_a_key = False
-    collect_favourites = True
+    collect_favourites = False
 
     if scrape:
         dd = Scrape(id_).collect_a_property()
