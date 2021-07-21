@@ -1,4 +1,6 @@
 from urllib.request import urlopen
+import requests
+from requests.auth import HTTPBasicAuth
 from shutil import copyfileobj
 from pathlib import Path
 import re
@@ -259,10 +261,41 @@ class Enrich(DAO):
             self.update_enriched_details(id_, enriched_details_dict)
 
 
-class Favourites():
+class Favourites:
 
     def __init__(self):
         self.page_url = r'https://www.rightmove.co.uk/user/shortlist.html'
+        self.login_url = r'https://my.rightmove.co.uk/login'
+
+    def _login(self):
+
+        # auth = HTTPBasicAuth(email, password)
+        # s = requests.Session()
+        # r = s.options(login_url, data=payload, headers=headers)
+        from requests_html import HTMLSession
+
+        login_url = r'https://my.rightmove.co.uk/login'
+        page_url = r'https://www.rightmove.co.uk/user/shortlist.html'
+        email = 'peternorton99@yahoo.com.au'
+        password = 'xxx'
+        data = {'email': email,
+                'password': password,
+                'keepMeLoggedIn': 'true'}
+        headers = {
+            'Content-type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+        session = HTMLSession()
+        s = session.options(url=login_url, data=data, headers=headers)
+        r = session.get(url=page_url)
+        r.html.render()
+        tags = r.html.find('div')
+
+        for t in tags:
+            print(t)
+        print()
+        session.close()
 
     def _get_soup(self):
         with urlopen(self.page_url) as response:
@@ -297,7 +330,7 @@ if __name__ == '__main__':
     enrich = False
     add_one = False
     delete_a_key = False
-    collect_favourites = False
+    collect_favourites = True
 
     if scrape:
         dd = Scrape(id_).collect_a_property()
@@ -330,7 +363,9 @@ if __name__ == '__main__':
         d.delete_version(db_version)
 
     if collect_favourites:
-        f = Favourites().collect_favourites()
+        f = Favourites()
+        f._login()
+        f.collect_favourites()
 
-
+    print()
 
